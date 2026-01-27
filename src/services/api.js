@@ -256,7 +256,76 @@ getDepartment: (id) => api.get(`/departments/${id}/`),
 createDepartment: (data) => api.post("/departments/", data),
 updateDepartment: (id, data) => api.put(`/departments/${id}/`, data),
 deleteDepartment: (id) => api.delete(`/departments/${id}/`),
+getEmployeeDocuments: (employeeId) => {
+  return api.get(`/employees/get-documents/`, {
+    params: { employee_id: employeeId }
+  });
+},
 
+uploadEmployeeDocument: (data) => {
+  const formData = new FormData();
+  formData.append('employee_id', data.employee_id);
+  formData.append('document', data.document_file);
+  formData.append('document_name', data.document_name);
+  formData.append('document_type', data.document_type);
+  
+  if (data.description) {
+    formData.append('description', data.description);
+  }
+  if (data.expiry_date) {
+    formData.append('expiry_date', data.expiry_date);
+  }
+  if (data.is_confidential !== undefined) {
+    formData.append('is_confidential', data.is_confidential);
+  }
+  
+  return api.post("/employees/upload-document/", formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+},
+
+deleteEmployeeDocument: (documentId) => {
+  return api.delete(`/employees/delete-document/`, {
+    params: { document_id: documentId }
+  });
+},
+
+downloadEmployeeDocument: async (documentUrl, filename) => {
+  try {
+    const response = await api.get(documentUrl, {
+      responseType: 'blob',
+      headers: {
+        'Accept': 'application/pdf, application/octet-stream, */*'
+      }
+    });
+    
+    // Get content type from response
+    const contentType = response.headers['content-type'] || 'application/octet-stream';
+    
+    // Create blob with correct content type
+    const blob = new Blob([response.data], { type: contentType });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    
+    // Ensure filename has correct extension
+    let finalFilename = filename;
+    if (contentType.includes('pdf') && !filename.toLowerCase().endsWith('.pdf')) {
+      finalFilename = `${filename}.pdf`;
+    }
+    
+    link.download = finalFilename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+    
+    return { success: true, filename: finalFilename };
+  } catch (error) {
+    console.error('Document download failed:', error);
+    throw error;
+  }
+},
 // ========================================
 // UNITS
 // ========================================

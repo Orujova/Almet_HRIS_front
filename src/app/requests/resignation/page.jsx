@@ -1,9 +1,13 @@
+// ========================================
+// MAIN PAGE: ResignationExitManagement.jsx
+// ========================================
 'use client';
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { 
   FileText, LogOut, RefreshCw, UserCheck, Settings, Plus,
-  Search, TrendingUp, Clock, Eye, Trash2, Building2, Calendar, ArrowLeft, User, Briefcase
+  Search, Clock, Eye, Trash2, Building2, Calendar, ArrowLeft, 
+  ChevronRight, Home, AlertCircle
 } from 'lucide-react';
 import resignationExitService from '@/services/resignationExitService';
 import ConfirmationModal from '@/components/common/ConfirmationModal';
@@ -23,7 +27,8 @@ export default function ResignationExitManagement() {
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState('employee');
   
-  const [activeTab, setActiveTab] = useState('dashboard');
+  // View states: 'home', 'resignations', 'exits', 'contracts', 'probation', 'detail'
+  const [currentView, setCurrentView] = useState('home');
   const [selectedItem, setSelectedItem] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('');
@@ -142,39 +147,73 @@ export default function ResignationExitManagement() {
     loadDataForRole(userRole);
   };
 
-  // Tab Configuration
-  const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: TrendingUp, roles: ['employee', 'manager', 'admin'] },
-    { id: 'resignations', label: 'Resignations', icon: FileText, count: data.resignations.length, roles: ['employee', 'manager', 'admin'] },
-    { id: 'exit-interviews', label: 'Exit Interviews', icon: LogOut, count: data.exitInterviews.length, roles: ['employee', 'manager', 'admin'] },
-    { id: 'contracts', label: 'Contracts', icon: RefreshCw, count: data.contractRenewals.length, roles: ['manager', 'admin'] },
-    { id: 'probation', label: 'Probation', icon: UserCheck, count: data.probationReviews.length, roles: ['manager', 'admin'] }
-  ];
+  const navigateToView = (view, item = null) => {
+    setCurrentView(view);
+    if (item) setSelectedItem(item);
+    setSearchTerm('');
+    setFilterStatus('all');
+  };
 
-  const visibleTabs = tabs.filter(tab => tab.roles.includes(userRole));
+  const navigateToHome = () => {
+    setCurrentView('home');
+    setSelectedItem(null);
+  };
+
+  const openDetailModal = (item, type) => {
+    setSelectedItem(item);
+    setModalType(type);
+    setShowModal(true);
+  };
 
   // Components
-  const StatsCard = ({ icon: Icon, title, value, color, onClick }) => (
-    <button 
-      onClick={onClick}
-      className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 hover:shadow-sm hover:border-almet-sapphire dark:hover:border-almet-sapphire transition-all text-left w-full"
-    >
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">{title}</p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">{value}</p>
-        </div>
-        <div className={`p-3 ${color} rounded-lg`}>
-          <Icon size={20} />
-        </div>
-      </div>
-    </button>
+  const Breadcrumb = ({ path }) => (
+    <div className="flex items-center gap-2 text-sm mb-4">
+      <button 
+        onClick={navigateToHome}
+        className="flex items-center gap-1 text-gray-600 dark:text-gray-400 hover:text-almet-sapphire transition-colors"
+      >
+        <Home size={16} />
+        <span>Home</span>
+      </button>
+      {path.map((item, idx) => (
+        <React.Fragment key={idx}>
+          <ChevronRight size={14} className="text-gray-400" />
+          <span className={idx === path.length - 1 ? "text-gray-900 dark:text-white font-medium" : "text-gray-600 dark:text-gray-400"}>
+            {item}
+          </span>
+        </React.Fragment>
+      ))}
+    </div>
   );
 
   const StatusBadge = ({ status }) => (
     <span className={`px-2 py-1 rounded-full text-xs font-medium border ${resignationExitService.helpers.getStatusColor(status)}`}>
       {resignationExitService.helpers.getStatusText(status)}
     </span>
+  );
+
+  const ActionCard = ({ icon: Icon, title, description, count, color, onClick }) => (
+    <button
+      onClick={onClick}
+      className="bg-white dark:bg-gray-800 rounded-lg p-6 border-2 border-gray-200 dark:border-gray-700 hover:border-almet-sapphire dark:hover:border-almet-sapphire hover:shadow-lg transition-all text-left group"
+    >
+      <div className="flex items-start justify-between mb-4">
+        <div className={`p-3 ${color} rounded-xl group-hover:scale-110 transition-transform`}>
+          <Icon size={24} />
+        </div>
+        {count !== undefined && (
+          <span className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-full text-sm font-bold">
+            {count}
+          </span>
+        )}
+      </div>
+      <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2">{title}</h3>
+      <p className="text-sm text-gray-600 dark:text-gray-400">{description}</p>
+      <div className="flex items-center gap-1 text-almet-sapphire mt-3 text-sm font-medium">
+        <span>View details</span>
+        <ChevronRight size={16} />
+      </div>
+    </button>
   );
 
   const ListItem = ({ item, type, onView, onDelete }) => {
@@ -189,17 +228,17 @@ export default function ResignationExitManagement() {
     return (
       <button
         onClick={() => onView(item)}
-        className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-sm hover:border-almet-sapphire dark:hover:border-almet-sapphire transition-all text-left"
+        className="w-full bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md hover:border-almet-sapphire dark:hover:border-almet-sapphire transition-all text-left group"
       >
         <div className="flex items-start gap-3">
-          <div className="p-2 bg-almet-mystic dark:bg-almet-cloud-burst/20 rounded-lg">
-            <Icon size={16} className="text-almet-sapphire" />
+          <div className="p-3 bg-almet-mystic dark:bg-almet-cloud-burst/20 rounded-lg group-hover:bg-almet-sapphire group-hover:text-white transition-colors">
+            <Icon size={18} className="text-almet-sapphire group-hover:text-white" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between mb-2">
               <div>
                 <h4 className="text-sm font-semibold text-gray-900 dark:text-white">{item.employee_name}</h4>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
+                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
                   {item.employee_id} • {item.position}
                 </p>
               </div>
@@ -230,15 +269,21 @@ export default function ResignationExitManagement() {
               )}
             </div>
             
-            {userRole.is_admin && (
-              <button 
-                onClick={(e) => { e.stopPropagation(); onDelete(item); }}
-                className="flex items-center gap-1 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-xs font-medium hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
-              >
-                <Trash2 size={12} />
-                Delete
-              </button>
-            )}
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1 text-almet-sapphire text-xs font-medium">
+                <span>View details</span>
+                <ChevronRight size={14} />
+              </div>
+              {userRole.is_admin && (
+                <button 
+                  onClick={(e) => { e.stopPropagation(); onDelete(item); }}
+                  className="ml-auto flex items-center gap-1 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-xs font-medium hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                >
+                  <Trash2 size={12} />
+                  Delete
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </button>
@@ -246,117 +291,128 @@ export default function ResignationExitManagement() {
   };
 
   // Views
-  const DashboardView = () => {
+  const HomeView = () => {
     const pendingResignations = data.resignations.filter(r => ['PENDING_MANAGER', 'PENDING_HR'].includes(r.status));
     const pendingExits = data.exitInterviews.filter(e => e.status === 'PENDING');
     const urgentContracts = data.contractRenewals.filter(c => c.days_until_expiry <= 14);
     const pendingReviews = data.probationReviews.filter(p => p.status === 'PENDING');
 
     return (
-      <div className="space-y-4">
-        {/* Stats */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-          <StatsCard 
-            icon={FileText} 
-            title="Pending Resignations" 
-            value={pendingResignations.length} 
-            color="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400"
-            onClick={() => setActiveTab('resignations')} 
-          />
-          <StatsCard 
-            icon={LogOut} 
-            title="Exit Interviews" 
-            value={pendingExits.length} 
-            color="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
-            onClick={() => setActiveTab('exit-interviews')} 
-          />
-          <StatsCard 
-            icon={RefreshCw} 
-            title="Contract Renewals" 
-            value={urgentContracts.length} 
-            color="bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400"
-            onClick={() => setActiveTab('contracts')} 
-          />
-          <StatsCard 
-            icon={UserCheck} 
-            title="Probation Reviews" 
-            value={pendingReviews.length} 
-            color="bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400"
-            onClick={() => setActiveTab('probation')} 
-          />
+      <div className="space-y-6">
+        {/* Welcome Section */}
+        <div className="bg-gradient-to-br from-almet-sapphire via-almet-astral to-almet-steel-blue rounded-xl p-6 text-white">
+          <h2 className="text-xl font-bold mb-2">Employee Offboarding</h2>
+          <p className="text-blue-100 text-sm">
+            Manage resignations, exit interviews, contract renewals, and probation reviews
+          </p>
         </div>
 
         {/* Quick Actions */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Quick Actions</h3>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+        <div>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <Plus size={18} className="text-almet-sapphire" />
+            Quick Actions
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <button 
               onClick={() => { setModalType('submit_resignation'); setShowModal(true); }}
-              className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+              className="bg-white dark:bg-gray-800 rounded-lg p-4 border-2 border-gray-200 dark:border-gray-700 hover:border-red-500 dark:hover:border-red-500 hover:shadow-lg transition-all group"
             >
-              <Plus size={16} className="text-red-600 dark:text-red-400" />
-              <span className="text-xs font-medium text-gray-900 dark:text-white">Submit Resignation</span>
+              <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg mb-3 group-hover:bg-red-500 group-hover:text-white transition-colors inline-flex">
+                <Plus size={20} className="text-red-600 dark:text-red-400 group-hover:text-white" />
+              </div>
+              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Submit Resignation</h4>
+              <p className="text-xs text-gray-600 dark:text-gray-400">Start resignation process</p>
             </button>
 
             {userRole.is_admin && (
               <>
                 <button 
                   onClick={() => { setModalType('create_exit_interview'); setShowModal(true); }}
-                  className="flex items-center gap-2 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+                  className="bg-white dark:bg-gray-800 rounded-lg p-4 border-2 border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-lg transition-all group"
                 >
-                  <Plus size={16} className="text-blue-600 dark:text-blue-400" />
-                  <span className="text-xs font-medium text-gray-900 dark:text-white">Exit Interview</span>
+                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg mb-3 group-hover:bg-blue-500 group-hover:text-white transition-colors inline-flex">
+                    <Plus size={20} className="text-blue-600 dark:text-blue-400 group-hover:text-white" />
+                  </div>
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Create Exit Interview</h4>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Schedule new interview</p>
                 </button>
+
                 <button 
                   onClick={() => window.location.href = 'question-management'}
-                  className="flex items-center gap-2 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors"
+                  className="bg-white dark:bg-gray-800 rounded-lg p-4 border-2 border-gray-200 dark:border-gray-700 hover:border-purple-500 dark:hover:border-purple-500 hover:shadow-lg transition-all group"
                 >
-                  <Settings size={16} className="text-purple-600 dark:text-purple-400" />
-                  <span className="text-xs font-medium text-gray-900 dark:text-white">Questions</span>
+                  <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg mb-3 group-hover:bg-purple-500 group-hover:text-white transition-colors inline-flex">
+                    <Settings size={20} className="text-purple-600 dark:text-purple-400 group-hover:text-white" />
+                  </div>
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Manage Questions</h4>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Configure interview questions</p>
                 </button>
+
                 <button 
                   onClick={() => window.location.href = 'probation-tracking'}
-                  className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg hover:bg-amber-100 dark:hover:bg-amber-900/30 transition-colors"
+                  className="bg-white dark:bg-gray-800 rounded-lg p-4 border-2 border-gray-200 dark:border-gray-700 hover:border-amber-500 dark:hover:border-amber-500 hover:shadow-lg transition-all group"
                 >
-                  <Clock size={16} className="text-amber-600 dark:text-amber-400" />
-                  <span className="text-xs font-medium text-gray-900 dark:text-white">Tracking</span>
+                  <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg mb-3 group-hover:bg-amber-500 group-hover:text-white transition-colors inline-flex">
+                    <Clock size={20} className="text-amber-600 dark:text-amber-400 group-hover:text-white" />
+                  </div>
+                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Probation Tracking</h4>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">Monitor probation periods</p>
                 </button>
               </>
             )}
           </div>
         </div>
 
-        {/* Recent Activity */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Recent Activity</h3>
-          <div className="space-y-2">
-            {data.resignations.slice(0, 5).map(item => (
-              <button
-                key={item.id}
-                onClick={() => {
-                  setSelectedItem(item);
-                  setModalType('resignation_detail');
-                  setShowModal(true);
-                }}
-                className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-colors text-left"
-              >
-                <div className="p-2 bg-red-50 dark:bg-red-900/20 rounded-lg">
-                  <FileText size={14} className="text-red-600 dark:text-red-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-medium text-gray-900 dark:text-white truncate">{item.employee_name}</p>
-                  <p className="text-xs text-gray-500 dark:text-gray-400">{resignationExitService.helpers.formatDate(item.submission_date)}</p>
-                </div>
-                <StatusBadge status={item.status} />
-              </button>
-            ))}
+        {/* Main Categories */}
+        <div>
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4">Categories</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <ActionCard
+              icon={FileText}
+              title="Resignations"
+              description="View and manage employee resignations and approvals"
+              count={pendingResignations.length}
+              color="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400"
+              onClick={() => navigateToView('resignations')}
+            />
+            <ActionCard
+              icon={LogOut}
+              title="Exit Interviews"
+              description="Conduct and review exit interview responses"
+              count={pendingExits.length}
+              color="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+              onClick={() => navigateToView('exits')}
+            />
+            {(userRole.is_admin || userRole.is_manager) && (
+              <>
+                <ActionCard
+                  icon={RefreshCw}
+                  title="Contract Renewals"
+                  description="Track and manage contract expiration dates"
+                  count={urgentContracts.length}
+                  color="bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400"
+                  onClick={() => navigateToView('contracts')}
+                />
+                <ActionCard
+                  icon={UserCheck}
+                  title="Probation Reviews"
+                  description="Manage employee probation period evaluations"
+                  count={pendingReviews.length}
+                  color="bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400"
+                  onClick={() => navigateToView('probation')}
+                />
+              </>
+            )}
           </div>
         </div>
+
+        
       </div>
     );
   };
 
-  const ListView = ({ items, type, emptyMessage }) => {
+  const ListView = ({ items, type, title, icon: Icon }) => {
     const filtered = items.filter(item => {
       const matchesSearch = item.employee_name?.toLowerCase().includes(searchTerm.toLowerCase()) || 
                            item.employee_id?.toLowerCase().includes(searchTerm.toLowerCase());
@@ -365,49 +421,81 @@ export default function ResignationExitManagement() {
     });
 
     return (
-      <div className="space-y-3">
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-2">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
-            <input 
-              type="text"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              placeholder="Search by name or employee ID..."
-              className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
-            />
+      <div className="space-y-4">
+        <Breadcrumb path={[title]} />
+
+        {/* Page Header */}
+        <div className="bg-gradient-to-br from-almet-sapphire to-almet-astral rounded-xl p-6 text-white">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-3 bg-white/20 rounded-lg">
+              <Icon size={24} />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold">{title}</h2>
+              <p className="text-blue-100 text-sm mt-1">
+                {filtered.length} {filtered.length === 1 ? 'item' : 'items'} found
+              </p>
+            </div>
           </div>
-          <select
-            value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
+          <button
+            onClick={navigateToHome}
+            className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-sm font-medium"
           >
-            <option value="all">All Status</option>
-            <option value="PENDING_MANAGER">Pending Manager</option>
-            <option value="PENDING_HR">Pending HR</option>
-            <option value="APPROVED">Approved</option>
-          </select>
+            <ArrowLeft size={16} />
+            Back to Home
+          </button>
+        </div>
+
+        {/* Filters */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+              <input 
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search by name or employee ID..."
+                className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
+              />
+            </div>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value)}
+              className="px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-transparent min-w-[200px]"
+            >
+              <option value="all">All Status</option>
+              <option value="PENDING_MANAGER">Pending Manager</option>
+              <option value="PENDING_HR">Pending HR</option>
+              <option value="APPROVED">Approved</option>
+              <option value="COMPLETED">Completed</option>
+            </select>
+          </div>
         </div>
 
         {/* List */}
         {filtered.length === 0 ? (
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-12 text-center">
-            <FileText size={48} className="mx-auto text-gray-400 mb-3" />
-            <p className="text-sm text-gray-600 dark:text-gray-400">{emptyMessage}</p>
+            <Icon size={48} className="mx-auto text-gray-400 mb-4" />
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No items found</h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+              {searchTerm || filterStatus !== 'all' ? 'Try adjusting your filters' : 'No data available'}
+            </p>
+            <button
+              onClick={navigateToHome}
+              className="px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors text-sm font-medium"
+            >
+              Back to Home
+            </button>
           </div>
         ) : (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {filtered.map(item => (
               <ListItem 
                 key={item.id} 
                 item={item} 
                 type={type}
-                onView={(item) => {
-                  setSelectedItem(item);
-                  setModalType(type === 'resignation' ? 'resignation_detail' : type === 'exit' ? 'exit_interview' : type === 'contract' ? 'contract_renewal' : 'probation_review');
-                  setShowModal(true);
-                }}
+                onView={(item) => openDetailModal(item, type === 'resignation' ? 'resignation_detail' : type === 'exit' ? 'exit_interview' : type === 'contract' ? 'contract_renewal' : 'probation_review')}
                 onDelete={(item) => setDeleteModal({ show: true, item, type })}
               />
             ))}
@@ -417,79 +505,17 @@ export default function ResignationExitManagement() {
     );
   };
 
-  if (loading) return <LoadingSpinner message="Loading Resignation & Exit Management..." />;
+  if (loading) return <LoadingSpinner message="Loading Employee Offboarding System..." />;
 
   return (
     <DashboardLayout>
-      <div className="space-y-4">
-        {/* Breadcrumb - only show when not on dashboard */}
-        {activeTab !== 'dashboard' && (
-          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-            <button 
-              onClick={() => setActiveTab('dashboard')}
-              className="hover:text-almet-sapphire transition-colors"
-            >
-              Dashboard
-            </button>
-            <span>/</span>
-            <span className="text-gray-900 dark:text-white font-medium">
-              {tabs.find(t => t.id === activeTab)?.label}
-            </span>
-          </div>
-        )}
-
-        {/* Header */}
-        <div className="bg-gradient-to-r from-almet-sapphire to-almet-astral rounded-lg p-4 text-white shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-white/20 rounded-lg">
-              <Building2 size={24} />
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold">Resignation & Exit Management</h1>
-              <p className="text-blue-100 text-xs mt-0.5">Manage employee resignations, exits, and transitions</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Tabs */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
-          <div className="flex border-b border-gray-200 dark:border-gray-700 overflow-x-auto">
-            {visibleTabs.map(tab => {
-              const Icon = tab.icon;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 py-3 text-xs font-medium whitespace-nowrap border-b-2 transition-colors ${
-                    activeTab === tab.id
-                      ? 'border-almet-sapphire text-almet-sapphire bg-almet-mystic dark:bg-almet-cloud-burst/20'
-                      : 'border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                  }`}
-                >
-                  <Icon size={14} />
-                  {tab.label}
-                  {tab.count !== undefined && (
-                    <span className={`px-2 py-0.5 rounded-full text-xs font-semibold ${
-                      activeTab === tab.id 
-                        ? 'bg-almet-sapphire text-white' 
-                        : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-                    }`}>
-                      {tab.count}
-                    </span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="p-4">
-            {activeTab === 'dashboard' && <DashboardView />}
-            {activeTab === 'resignations' && <ListView items={data.resignations} type="resignation" emptyMessage="No resignations found" />}
-            {activeTab === 'exit-interviews' && <ListView items={data.exitInterviews} type="exit" emptyMessage="No exit interviews found" />}
-            {activeTab === 'contracts' && <ListView items={data.contractRenewals} type="contract" emptyMessage="No contract renewals found" />}
-            {activeTab === 'probation' && <ListView items={data.probationReviews} type="probation" emptyMessage="No probation reviews found" />}
-          </div>
-        </div>
+      <div className="max-w-7xl mx-auto">
+        {/* Main Content */}
+        {currentView === 'home' && <HomeView />}
+        {currentView === 'resignations' && <ListView items={data.resignations} type="resignation" title="Resignations" icon={FileText} />}
+        {currentView === 'exits' && <ListView items={data.exitInterviews} type="exit" title="Exit Interviews" icon={LogOut} />}
+        {currentView === 'contracts' && <ListView items={data.contractRenewals} type="contract" title="Contract Renewals" icon={RefreshCw} />}
+        {currentView === 'probation' && <ListView items={data.probationReviews} type="probation" title="Probation Reviews" icon={UserCheck} />}
 
         {/* Modals */}
         {showModal && (

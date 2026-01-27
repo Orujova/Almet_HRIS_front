@@ -11,13 +11,13 @@ export default function ResignationDetailModal({ resignation, onClose, onSuccess
   const [processing, setProcessing] = useState(false);
 
   const canApprove = () => {
-    if (userRole === 'admin') return true;
-    if (userRole === 'manager' && resignation.status === 'PENDING_MANAGER') return true;
+    if (userRole?.is_admin) return true;
+    if (userRole?.is_manager && resignation.status === 'PENDING_MANAGER') return true;
     return false;
   };
 
   const canHRApprove = () => {
-    return userRole === 'admin' && resignation.status === 'PENDING_HR';
+    return userRole?.is_admin || resignation.status === 'PENDING_HR';
   };
 
   const handleApproval = async () => {
@@ -71,9 +71,11 @@ export default function ResignationDetailModal({ resignation, onClose, onSuccess
     );
   };
 
+  const showApprovalButtons = (canApprove() || canHRApprove()) && !showApprovalForm;
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
         {/* Header */}
         <div className="bg-gradient-to-r from-almet-sapphire to-almet-astral p-4 text-white">
           <div className="flex items-center justify-between">
@@ -221,22 +223,27 @@ export default function ResignationDetailModal({ resignation, onClose, onSuccess
           )}
 
           {/* Approval Actions */}
-          {(canApprove() || canHRApprove()) && !showApprovalForm && (
-            <div className="flex gap-3">
-              <button
-                onClick={() => { setAction('approve'); setShowApprovalForm(true); }}
-                className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center justify-center gap-2"
-              >
-                <CheckCircle size={18} />
-                Approve Resignation
-              </button>
-              <button
-                onClick={() => { setAction('reject'); setShowApprovalForm(true); }}
-                className="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium flex items-center justify-center gap-2"
-              >
-                <XCircle size={18} />
-                Reject Resignation
-              </button>
+          {showApprovalButtons && (
+            <div className="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-4 border-2 border-amber-200 dark:border-amber-800">
+              <p className="text-sm font-medium text-gray-900 dark:text-white mb-3">
+                This resignation requires your approval
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => { setAction('approve'); setShowApprovalForm(true); }}
+                  className="flex-1 px-4 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors text-sm font-medium flex items-center justify-center gap-2"
+                >
+                  <CheckCircle size={18} />
+                  Approve Resignation
+                </button>
+                <button
+                  onClick={() => { setAction('reject'); setShowApprovalForm(true); }}
+                  className="flex-1 px-4 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium flex items-center justify-center gap-2"
+                >
+                  <XCircle size={18} />
+                  Reject Resignation
+                </button>
+              </div>
             </div>
           )}
 

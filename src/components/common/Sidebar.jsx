@@ -181,7 +181,7 @@ const Sidebar = ({ collapsed = false }) => {
       },
       
       {
-        label: "Resignation & Exit",
+        label: "Offboarding",
         icon: <FileText className="w-4 h-4" />,
         path: "/requests/resignation",
         id: "resignation",
@@ -253,7 +253,7 @@ const Sidebar = ({ collapsed = false }) => {
         icon: <Package className="w-4 h-4" />,
         path: "/settings/asset-mng",
         id: "asset-mng",
-        // requiredRole: ['admin']
+        requiredRole: ['admin']
       },
       {
         label: "Role Management",

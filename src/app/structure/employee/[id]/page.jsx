@@ -49,9 +49,8 @@ import EmployeeDetailJobDescriptions from "@/components/headcount/EmployeeDetail
 import EmployeeAssetManagement from "@/components/headcount/EmployeeAssetManagement";
 import EmployeeDetailPerformance from "@/components/headcount/EmployeeDetailPerformance";
 import EmployeeProfilePhotoManager from "@/components/headcount/EmployeeProfilePhotoManager";
-/**
- * Enhanced Employee Detail Page with Profile Photo Management
- */
+import EmployeeDocumentManager from "@/components/headcount/EmployeeDocumentManager";
+
 const EmployeeDetailPageContent = () => {
   const { id } = useParams();
   const router = useRouter();
@@ -178,14 +177,6 @@ const EmployeeDetailPageContent = () => {
   };
 
 
-
-  // Utility functions
-  const getInitials = (name) => {
-    if (!name) return "NA";
-    const names = name.split(" ");
-    if (names.length === 1) return names[0].charAt(0);
-    return `${names[0].charAt(0)}${names[names.length - 1].charAt(0)}`;
-  };
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -818,51 +809,15 @@ const EmployeeDetailPageContent = () => {
                     </div>
                   )}
 
-                  {activeTab === 'documents' && (
-                    <div className="space-y-6">
-                      <div className="flex justify-between items-center">
-                        <h3 className={`${textPrimary} text-lg font-bold`}>Documents & Files</h3>
-                      </div>
-                      
-                      {currentEmployee.documents && currentEmployee.documents.length > 0 ? (
-                        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                          {currentEmployee.documents.map((doc) => (
-                            <div 
-                              key={doc.id}
-                              className={`${bgCard} rounded-xl border ${borderColor} p-6 hover:shadow-lg transition-all duration-300 cursor-pointer group ${shadowClass}`}
-                              onClick={() => {}}
-                            >
-                              <div className="flex items-start justify-between mb-4">
-                                <div className="p-3 bg-almet-sapphire/10 rounded-xl group-hover:bg-almet-sapphire/20 transition-colors">
-                                  <FileText className="h-6 w-6 text-almet-sapphire" />
-                                </div>
-                                <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors">
-                                  <Download size={16} className={`${textMuted} group-hover:text-almet-sapphire`} />
-                                </button>
-                              </div>
-                              <h4 className={`${textPrimary} font-semibold text-sm mb-2 line-clamp-2`}>
-                                {doc.name}
-                              </h4>
-                              <div className={`${textMuted} text-xs space-y-1`}>
-                                <p>Size: {doc.file_size ? `${(doc.file_size / 1024).toFixed(1)} KB` : 'Unknown'}</p>
-                                <p>Uploaded: {formatDate(doc.uploaded_at)}</p>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className={`${bgAccent} rounded-2xl p-12 text-center border ${borderColor}`}>
-                          <div className="w-20 h-20 mx-auto mb-6 bg-gray-200 dark:bg-gray-700 rounded-2xl flex items-center justify-center">
-                            <FileText size={32} className={`${textMuted}`} />
-                          </div>
-                          <h4 className={`text-lg font-bold ${textPrimary} mb-2`}>No Documents Found</h4>
-                          <p className={`${textMuted} text-sm mb-6`}>
-                            This employee doesn't have any documents uploaded yet.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
+               {activeTab === 'documents' && (
+  <div className="space-y-6">
+    <EmployeeDocumentManager 
+      employeeId={id} 
+      employeeData={currentEmployee}
+      darkMode={darkMode}
+    />
+  </div>
+)}
 
                   {activeTab === 'activity' && (
                     <div className="space-y-6">

@@ -15,14 +15,12 @@ import {
   Briefcase,
   BookOpen,
   Clock,
-  Globe,
 } from "lucide-react";
 import { useState, useEffect, useRef } from "react";
 import { useTheme } from "../common/ThemeProvider";
 import { useAuth } from "@/auth/AuthContext";
 import { useRouter, usePathname } from "next/navigation";
 import NotificationDropdown from "./NotificationDropdown";
-import handoverService from "@/services/handoverService";
 
 const Header = ({ toggleSidebar, isMobile, isSidebarCollapsed }) => {
   const { darkMode, toggleTheme } = useTheme();
@@ -34,11 +32,7 @@ const Header = ({ toggleSidebar, isMobile, isSidebarCollapsed }) => {
     london: ""
   });
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
-  const [showTimeCard, setShowTimeCard] = useState(false);
-  const [userDetails, setUserDetails] = useState(null);
-  const [primaryTimezone, setPrimaryTimezone] = useState('baku'); // 'baku' or 'london'
   const userMenuRef = useRef(null);
-  const timeCardRef = useRef(null);
 
   // Tab definitions
   const tabs = [
@@ -76,31 +70,6 @@ const Header = ({ toggleSidebar, isMobile, isSidebarCollapsed }) => {
     setActiveTab(getActiveTab());
   }, [pathname]);
 
-  // Load user details to determine business function
-  useEffect(() => {
-    const loadUserDetails = async () => {
-      try {
-        const userData = await handoverService.getUser();
-        setUserDetails(userData);
-        
-        // Determine primary timezone based on business function
-        const businessFunction = userData?.employee?.business_function_detail?.name || 
-                                userData?.employee?.business_function_detail?.code || '';
-        
-        if (businessFunction.toUpperCase() === 'UK') {
-          setPrimaryTimezone('london');
-        } else {
-          setPrimaryTimezone('baku');
-        }
-      } catch (error) {
-        console.error('Failed to load user details:', error);
-        setPrimaryTimezone('baku'); // Default to Baku
-      }
-    };
-
-    loadUserDetails();
-  }, []);
-
   // Function to update times
   const updateTimes = () => {
     const now = new Date();
@@ -127,14 +96,11 @@ const Header = ({ toggleSidebar, isMobile, isSidebarCollapsed }) => {
     });
   };
 
-  // Close menus when clicking outside
+  // Close user menu when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (userMenuRef.current && !userMenuRef.current.contains(event.target)) {
         setIsUserMenuOpen(false);
-      }
-      if (timeCardRef.current && !timeCardRef.current.contains(event.target)) {
-        setShowTimeCard(false);
       }
     };
 
@@ -188,26 +154,6 @@ const Header = ({ toggleSidebar, isMobile, isSidebarCollapsed }) => {
     router.push(tab.path);
   };
 
-  // Get primary time info based on business function
-  const getPrimaryTimeInfo = () => {
-    if (primaryTimezone === 'london') {
-      return {
-        code: 'UK',
-        time: currentTimes.london,
-        label: 'London',
-        gradient: 'from-gray-600 to-gray-800'
-      };
-    }
-    return {
-      code: 'AZ',
-      time: currentTimes.baku,
-      label: 'Baku',
-      gradient: 'from-almet-sapphire to-almet-astral'
-    };
-  };
-
-  const primaryTime = getPrimaryTimeInfo();
-
   return (
     <header className="bg-white dark:bg-almet-cloud-burst border-b border-gray-200 dark:border-almet-comet shadow-sm">
       {/* Single Row - Combined Header with Tabs */}
@@ -260,121 +206,31 @@ const Header = ({ toggleSidebar, isMobile, isSidebarCollapsed }) => {
 
         {/* Right Side Elements */}
         <div className="flex items-center space-x-3">
-          {/* World Time Display */}
-          <div className="relative" ref={timeCardRef}>
-            <button
-              onClick={() => setShowTimeCard(!showTimeCard)}
-              className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-almet-comet transition-colors group"
-            >
-              <Clock size={14} className={primaryTimezone === 'london' ? 'text-gray-600 dark:text-gray-400' : 'text-almet-sapphire dark:text-almet-steel-blue'} />
-              <div className="flex flex-col items-start">
-                <span className="text-[10px] font-medium text-gray-500 dark:text-almet-bali-hai">
-                  {primaryTime.code}
-                </span>
-                <span className="text-xs font-bold text-gray-700 dark:text-white">
-                  {primaryTime.time}
+          {/* World Time Display - Compact Side by Side */}
+          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-50 dark:bg-almet-san-juan/30 border border-gray-200 dark:border-almet-comet">
+            {/* Baku Time */}
+            <div className="flex items-center gap-1.5 pr-2 border-r border-gray-300 dark:border-almet-comet">
+              <div className="w-5 h-5 rounded-full bg-gradient-to-br from-almet-sapphire to-almet-astral flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-[8px] font-bold">AZ</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-bold text-gray-900 dark:text-white leading-none">
+                  {currentTimes.baku}
                 </span>
               </div>
-            </button>
+            </div>
 
-            {/* Time Card Dropdown */}
-            {showTimeCard && (
-              <div className="absolute right-0 mt-2 w-64 bg-white dark:bg-almet-cloud-burst rounded-xl shadow-xl border border-gray-200 dark:border-almet-comet py-3 px-4 z-50">
-                <div className="flex items-center gap-2 mb-3 pb-3 border-b border-gray-200 dark:border-almet-comet">
-                  <Globe size={16} className="text-almet-sapphire dark:text-almet-steel-blue" />
-                  <h3 className="text-xs font-bold text-gray-900 dark:text-white">
-                    Global Time
-                  </h3>
-                </div>
-                
-                {/* Primary timezone first */}
-                {primaryTimezone === 'baku' ? (
-                  <>
-                    {/* Baku Time - Primary */}
-                    <div className="mb-3 p-3 rounded-lg bg-gradient-to-br from-almet-sapphire/5 to-almet-astral/5 dark:from-almet-steel-blue/10 dark:to-almet-astral/10 border border-almet-sapphire/20 dark:border-almet-steel-blue/20">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-6 h-6 rounded-full bg-gradient-to-br ${primaryTime.gradient} flex items-center justify-center`}>
-                            <span className="text-white text-[10px] font-bold">AZ</span>
-                          </div>
-                          <span className="text-xs font-semibold text-gray-900 dark:text-white">
-                            Baku
-                          </span>
-                        </div>
-                        <span className="text-sm font-bold text-almet-sapphire dark:text-almet-steel-blue">
-                          {currentTimes.baku}
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-gray-500 dark:text-almet-bali-hai ml-8">
-                        Azerbaijan (UTC+4)
-                      </p>
-                    </div>
-
-                    {/* London Time - Secondary */}
-                    <div className="p-3 rounded-lg bg-gray-50 dark:bg-almet-san-juan/30">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-gray-600 to-gray-800 flex items-center justify-center">
-                            <span className="text-white text-[10px] font-bold">UK</span>
-                          </div>
-                          <span className="text-xs font-semibold text-gray-900 dark:text-white">
-                            London
-                          </span>
-                        </div>
-                        <span className="text-sm font-bold text-gray-700 dark:text-white">
-                          {currentTimes.london}
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-gray-500 dark:text-almet-bali-hai ml-8">
-                        United Kingdom (GMT/BST)
-                      </p>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    {/* London Time - Primary */}
-                    <div className="mb-3 p-3 rounded-lg bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-700/20 dark:to-gray-800/20 border border-gray-300 dark:border-gray-600">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-6 h-6 rounded-full bg-gradient-to-br ${primaryTime.gradient} flex items-center justify-center`}>
-                            <span className="text-white text-[10px] font-bold">UK</span>
-                          </div>
-                          <span className="text-xs font-semibold text-gray-900 dark:text-white">
-                            London
-                          </span>
-                        </div>
-                        <span className="text-sm font-bold text-gray-700 dark:text-white">
-                          {currentTimes.london}
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-gray-500 dark:text-almet-bali-hai ml-8">
-                        United Kingdom (GMT/BST)
-                      </p>
-                    </div>
-
-                    {/* Baku Time - Secondary */}
-                    <div className="p-3 rounded-lg bg-gray-50 dark:bg-almet-san-juan/30">
-                      <div className="flex items-center justify-between mb-1">
-                        <div className="flex items-center gap-2">
-                          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-almet-sapphire to-almet-astral flex items-center justify-center">
-                            <span className="text-white text-[10px] font-bold">AZ</span>
-                          </div>
-                          <span className="text-xs font-semibold text-gray-900 dark:text-white">
-                            Baku
-                          </span>
-                        </div>
-                        <span className="text-sm font-bold text-almet-sapphire dark:text-almet-steel-blue">
-                          {currentTimes.baku}
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-gray-500 dark:text-almet-bali-hai ml-8">
-                        Azerbaijan (UTC+4)
-                      </p>
-                    </div>
-                  </>
-                )}
+            {/* London Time */}
+            <div className="flex items-center gap-1.5">
+              <div className="w-5 h-5 rounded-full bg-gradient-to-br from-gray-600 to-gray-800 flex items-center justify-center flex-shrink-0">
+                <span className="text-white text-[8px] font-bold">UK</span>
               </div>
-            )}
+              <div className="flex flex-col">
+                <span className="text-[10px] font-bold text-gray-900 dark:text-white leading-none">
+                  {currentTimes.london}
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Notifications Dropdown */}
