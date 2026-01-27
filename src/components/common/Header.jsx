@@ -72,29 +72,23 @@ const Header = ({ toggleSidebar, isMobile, isSidebarCollapsed }) => {
 
   // Function to update times
   const updateTimes = () => {
-    const now = new Date();
-    
-    // Baku time (UTC+4)
-    const bakuTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Baku' }));
-    let bakuHours = bakuTime.getHours();
-    const bakuMinutes = bakuTime.getMinutes().toString().padStart(2, '0');
-    const bakuAmpm = bakuHours >= 12 ? 'PM' : 'AM';
-    bakuHours = bakuHours % 12;
-    bakuHours = bakuHours ? bakuHours : 12;
-    
-    // London time (UTC+0/+1 depending on DST)
-    const londonTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/London' }));
-    let londonHours = londonTime.getHours();
-    const londonMinutes = londonTime.getMinutes().toString().padStart(2, '0');
-    const londonAmpm = londonHours >= 12 ? 'PM' : 'AM';
-    londonHours = londonHours % 12;
-    londonHours = londonHours ? londonHours : 12;
-    
-    setCurrentTimes({
-      baku: `${bakuHours}:${bakuMinutes} ${bakuAmpm}`,
-      london: `${londonHours}:${londonMinutes} ${londonAmpm}`
-    });
-  };
+  const now = new Date();
+  
+  // Baku time (UTC+4) - 24-hour format
+  const bakuTime = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Baku' }));
+  const bakuHours = bakuTime.getHours().toString().padStart(2, '0');
+  const bakuMinutes = bakuTime.getMinutes().toString().padStart(2, '0');
+  
+  // London time (UTC+0/+1 depending on DST) - 24-hour format
+  const londonTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/London' }));
+  const londonHours = londonTime.getHours().toString().padStart(2, '0');
+  const londonMinutes = londonTime.getMinutes().toString().padStart(2, '0');
+  
+  setCurrentTimes({
+    baku: `${bakuHours}:${bakuMinutes}`,
+    london: `${londonHours}:${londonMinutes}`
+  });
+};
 
   // Close user menu when clicking outside
   useEffect(() => {
