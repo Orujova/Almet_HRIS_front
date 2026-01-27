@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
-import { Clock, UserCheck, Calendar, AlertTriangle, TrendingUp, ArrowLeft } from 'lucide-react';
+import { Clock, UserCheck, Calendar, AlertTriangle, TrendingUp, ArrowLeft, Building2 } from 'lucide-react';
 import { employeeService } from '@/services/newsService';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import { apiService } from '@/services/api';
@@ -21,11 +21,8 @@ export default function ProbationTrackingPage() {
     try {
       setLoading(true);
       
-      // 1️⃣ Get contract configurations first
       const contractResponse = await apiService.getContractConfigs();
       const contracts = contractResponse.data.results || contractResponse.data || [];
-      
-      console.log('📋 Contract Configs:', contracts);
       
       const configMap = {};
       contracts.forEach(config => {
@@ -37,13 +34,9 @@ export default function ProbationTrackingPage() {
       });
       
       setContractConfigs(configMap);
-
       
-      // 2️⃣ Get probation status ID
       const statusesResponse = await apiService.getEmployeeStatuses();
       const statuses = statusesResponse.data.results || statusesResponse.data || [];
-      
-
       
       const probationStatus = statuses.find(s => 
         s.status_type === 'PROBATION' || 
@@ -51,11 +44,7 @@ export default function ProbationTrackingPage() {
       );
       
       if (!probationStatus) {
-        console.error('❌ Probation status not found in:', statuses.map(s => s.name));
-        // Try to get all employees and filter manually
-        const response = await employeeService.getEmployees({ 
-          page_size: 1000
-        });
+        const response = await employeeService.getEmployees({ page_size: 1000 });
         const employees = response.results || [];
         
         const enrichedEmployees = employees
@@ -72,27 +61,23 @@ export default function ProbationTrackingPage() {
 
       setProbationStatusId(probationStatus.id);
       
-      // 3️⃣ Get employees with probation status
       const response = await employeeService.getEmployees({ 
         page_size: 1000,
         status: probationStatus.id
       });
       
       const employees = response.results || [];
-      console.log('👥 Probation Employees:', employees);
       
-      // 4️⃣ Calculate probation info for each employee
       const enrichedEmployees = employees.map(emp => ({
         ...emp,
         ...calculateProbationInfo(emp, configMap)
       }));
       
-      // 5️⃣ Sort by days remaining (urgent first)
       enrichedEmployees.sort((a, b) => a.daysRemaining - b.daysRemaining);
       setProbationEmployees(enrichedEmployees);
       
     } catch (error) {
-      console.error('❌ Error loading probation data:', error);
+      console.error('Error loading probation data:', error);
     } finally {
       setLoading(false);
     }
@@ -110,9 +95,8 @@ export default function ProbationTrackingPage() {
       };
     }
 
-    // ✅ Get probation days from contract config
     const contractConfig = configMap[employee.contract_duration];
-    const totalProbationDays = contractConfig?.probation_days || 90; // Default 90 if not found
+    const totalProbationDays = contractConfig?.probation_days || 90;
     
     const startDate = new Date(employee.start_date);
     const today = new Date();
@@ -141,20 +125,20 @@ export default function ProbationTrackingPage() {
     };
   };
 
-  const getUrgencyColor = (urgencyLevel) => {
+  const getUrgencyBadgeColor = (urgencyLevel) => {
     const colors = {
-      'critical': 'bg-rose-50 border-rose-200 dark:bg-rose-900/20 dark:border-rose-800',
-      'warning': 'bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800',
-      'attention': 'bg-orange-50 border-orange-200 dark:bg-orange-900/20 dark:border-orange-800',
-      'normal': 'bg-almet-mystic border-almet-sapphire/30 dark:bg-almet-cloud-burst/20 dark:border-almet-sapphire/30',
-      'unknown': 'bg-gray-50 border-gray-200 dark:bg-gray-700 dark:border-gray-600'
+      'critical': 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800',
+      'warning': 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800',
+      'attention': 'bg-orange-100 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-400 dark:border-orange-800',
+      'normal': 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800',
+      'unknown': 'bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-700 dark:text-gray-400 dark:border-gray-600'
     };
     return colors[urgencyLevel] || colors.normal;
   };
 
   const getProgressBarColor = (urgencyLevel) => {
     const colors = {
-      'critical': 'bg-rose-500',
+      'critical': 'bg-red-500',
       'warning': 'bg-amber-500',
       'attention': 'bg-orange-500',
       'normal': 'bg-almet-sapphire',
@@ -164,17 +148,15 @@ export default function ProbationTrackingPage() {
   };
 
   const getContractDisplayName = (contractType) => {
-    // ✅ Use display_name from contract config if available
     if (contractConfigs[contractType]?.display_name) {
       return contractConfigs[contractType].display_name;
     }
     
-    // Fallback to formatted names
     const names = {
-      'PERMANENT': 'Permanent Contract',
-      '1_YEAR': '1 Year Contract',
-      '6_MONTHS': '6 Months Contract',
-      '3_MONTHS': '3 Months Contract'
+      'PERMANENT': 'Permanent',
+      '1_YEAR': '1 Year',
+      '6_MONTHS': '6 Months',
+      '3_MONTHS': '3 Months'
     };
     return names[contractType] || contractType;
   };
@@ -193,83 +175,103 @@ export default function ProbationTrackingPage() {
 
   return (
     <DashboardLayout>
-      <div className="space-y-3">
+      <div className="space-y-4">
         {/* Header */}
-        <div className="bg-gradient-to-r from-almet-sapphire to-almet-astral rounded-lg p-4 text-white shadow-lg">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => window.history.back()}
-                className="p-1.5 hover:bg-white/20 rounded-lg transition-colors"
-              >
-                <ArrowLeft size={16} />
-              </button>
+        <div className="bg-gradient-to-r from-almet-sapphire to-almet-astral rounded-lg p-4 text-white shadow-sm">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => window.history.back()}
+              className="p-2 hover:bg-white/20 rounded-lg transition-colors"
+            >
+              <ArrowLeft size={18} />
+            </button>
+            <div className="flex-1">
+              <h1 className="text-lg font-semibold">Probation Period Tracking</h1>
+              <p className="text-blue-100 text-xs mt-0.5">Monitor and manage employee probation periods</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-base font-bold">Probation Period Tracking</h1>
-                <p className="text-blue-100 text-[10px]">Monitor employees in probation</p>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Total Probation</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{total}</p>
+              </div>
+              <div className="p-3 bg-almet-mystic dark:bg-almet-cloud-burst/20 rounded-lg">
+                <UserCheck size={20} className="text-almet-sapphire" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Critical (≤7d)</p>
+                <p className="text-2xl font-bold text-red-600 dark:text-red-400">{critical}</p>
+              </div>
+              <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg">
+                <AlertTriangle size={20} className="text-red-600 dark:text-red-400" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Warning (≤14d)</p>
+                <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{warning}</p>
+              </div>
+              <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+                <Clock size={20} className="text-amber-600 dark:text-amber-400" />
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-xs text-gray-600 dark:text-gray-400 mb-1">Action Required</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{Math.round((critical + warning) / total * 100 || 0)}%</p>
+              </div>
+              <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                <TrendingUp size={20} className="text-green-600 dark:text-green-400" />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-          <div className="bg-gradient-to-br from-almet-sapphire to-almet-astral rounded-lg p-3 text-white shadow-sm">
-            <div className="flex items-center justify-between mb-1">
-              <UserCheck size={16} />
-              <span className="text-xl font-bold">{total}</span>
-            </div>
-            <p className="text-[10px] font-medium opacity-90">Total in Probation</p>
-          </div>
-
-          <div className="bg-gradient-to-br from-rose-500 to-rose-600 rounded-lg p-3 text-white shadow-sm">
-            <div className="flex items-center justify-between mb-1">
-              <AlertTriangle size={16} />
-              <span className="text-xl font-bold">{critical}</span>
-            </div>
-            <p className="text-[10px] font-medium opacity-90">Ending in 7 Days</p>
-          </div>
-
-          <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-lg p-3 text-white shadow-sm">
-            <div className="flex items-center justify-between mb-1">
-              <Clock size={16} />
-              <span className="text-xl font-bold">{warning}</span>
-            </div>
-            <p className="text-[10px] font-medium opacity-90">Ending in 14 Days</p>
-          </div>
-
-          <div className="bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-lg p-3 text-white shadow-sm">
-            <div className="flex items-center justify-between mb-1">
-              <TrendingUp size={16} />
-              <span className="text-xl font-bold">{Math.round((critical + warning) / total * 100 || 0)}%</span>
-            </div>
-            <p className="text-[10px] font-medium opacity-90">Require Action</p>
-          </div>
-        </div>
-
         {/* Filters */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-2">
-          <div className="flex gap-2">
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+          <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setFilter('all')}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-medium transition-colors ${
-                filter === 'all' ? 'bg-almet-sapphire text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+              className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors ${
+                filter === 'all' 
+                  ? 'bg-almet-sapphire text-white' 
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >
-              All ({total})
+              All Employees ({total})
             </button>
             <button
               onClick={() => setFilter('critical')}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-medium transition-colors ${
-                filter === 'critical' ? 'bg-rose-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+              className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors ${
+                filter === 'critical' 
+                  ? 'bg-red-600 text-white' 
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >
               Critical ({critical})
             </button>
             <button
               onClick={() => setFilter('warning')}
-              className={`px-3 py-1.5 rounded-lg text-[10px] font-medium transition-colors ${
-                filter === 'warning' ? 'bg-amber-600 text-white' : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+              className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors ${
+                filter === 'warning' 
+                  ? 'bg-amber-600 text-white' 
+                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
               }`}
             >
               Warning ({warning})
@@ -278,98 +280,99 @@ export default function ProbationTrackingPage() {
         </div>
 
         {/* Employee List */}
-        <div className="space-y-2">
+        <div className="space-y-3">
           {filteredEmployees.length === 0 ? (
-            <div className="text-center py-12 text-gray-500 dark:text-gray-400 text-xs">
-              {total === 0 ? 'No employees in probation period' : 'No employees found for this filter'}
+            <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-12 text-center">
+              <UserCheck size={48} className="mx-auto text-gray-400 mb-3" />
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                {total === 0 ? 'No employees in probation period' : 'No employees found for this filter'}
+              </p>
             </div>
           ) : (
             filteredEmployees.map(employee => (
               <div 
                 key={employee.id} 
-                className={`border-2 rounded-lg p-3 transition-all hover:shadow-sm ${getUrgencyColor(employee.urgencyLevel)}`}
+                className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4 hover:shadow-sm transition-shadow"
               >
-                <div className="flex items-start justify-between mb-2">
-                  <div className="flex items-start gap-2">
-                    <div className="p-1.5 bg-white dark:bg-gray-800 rounded">
-                      <UserCheck size={14} className="text-almet-sapphire" />
+                {/* Header */}
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-almet-mystic dark:bg-almet-cloud-burst/20 rounded-lg">
+                      <UserCheck size={18} className="text-almet-sapphire" />
                     </div>
                     <div>
-                      <h3 className="text-xs font-bold text-gray-900 dark:text-gray-100">
+                      <h3 className="text-sm font-semibold text-gray-900 dark:text-white">
                         {employee.name}
                       </h3>
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400">
+                      <p className="text-xs text-gray-600 dark:text-gray-400 mt-0.5">
                         {employee.employee_id} • {employee.job_title}
                       </p>
-                      <p className="text-[10px] text-gray-500 dark:text-gray-400">
-                        {employee.department_name} • {employee.business_function_name}
-                      </p>
-                      <p className="text-[10px] text-gray-600 dark:text-gray-400 mt-0.5">
-                        Contract: {getContractDisplayName(employee.contract_duration)} 
-                        ({employee.totalProbationDays} days probation)
-                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Building2 size={12} className="text-gray-400" />
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          {employee.department_name}
+                        </p>
+                      </div>
                     </div>
                   </div>
 
-                  <div className={`px-2 py-0.5 rounded text-[10px] font-bold text-white ${
-                    employee.urgencyLevel === 'critical' ? 'bg-rose-500' :
-                    employee.urgencyLevel === 'warning' ? 'bg-amber-500' :
-                    employee.urgencyLevel === 'attention' ? 'bg-orange-500' :
-                    'bg-almet-sapphire'
-                  }`}>
-                    {employee.daysRemaining}d left
-                  </div>
+                  <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${getUrgencyBadgeColor(employee.urgencyLevel)}`}>
+                    {employee.daysRemaining}d remaining
+                  </span>
                 </div>
 
-                <div className="grid grid-cols-4 gap-2 mb-2 p-2 bg-white dark:bg-gray-800 rounded">
+                {/* Info Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3 p-3 bg-gray-50 dark:bg-gray-900/50 rounded-lg">
                   <div>
-                    <p className="text-[9px] text-gray-500 mb-0.5">Start Date</p>
-                    <p className="text-[10px] font-medium text-gray-900 dark:text-gray-100">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Start Date</p>
+                    <p className="text-xs font-medium text-gray-900 dark:text-white">
                       {new Date(employee.start_date).toLocaleDateString('en-GB')}
                     </p>
                   </div>
                   <div>
-                    <p className="text-[9px] text-gray-500 mb-0.5">End Date</p>
-                    <p className="text-[10px] font-medium text-gray-900 dark:text-gray-100">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">End Date</p>
+                    <p className="text-xs font-medium text-gray-900 dark:text-white">
                       {employee.probationEndDate ? new Date(employee.probationEndDate).toLocaleDateString('en-GB') : '-'}
                     </p>
                   </div>
                   <div>
-                    <p className="text-[9px] text-gray-500 mb-0.5">Progress</p>
-                    <p className="text-[10px] font-medium text-gray-900 dark:text-gray-100">
-                      {employee.daysCompleted} / {employee.totalProbationDays}
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Contract Type</p>
+                    <p className="text-xs font-medium text-gray-900 dark:text-white">
+                      {getContractDisplayName(employee.contract_duration)}
                     </p>
                   </div>
                   <div>
-                    <p className="text-[9px] text-gray-500 mb-0.5">Manager</p>
-                    <p className="text-[10px] font-medium text-gray-900 dark:text-gray-100 truncate">
+                    <p className="text-xs text-gray-500 dark:text-gray-400 mb-1">Line Manager</p>
+                    <p className="text-xs font-medium text-gray-900 dark:text-white truncate">
                       {employee.line_manager_name || '-'}
                     </p>
                   </div>
                 </div>
 
-                <div className="mb-2">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] font-medium text-gray-700 dark:text-gray-300">
-                      Probation Progress
+                {/* Progress Bar */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300">
+                      Progress: {employee.daysCompleted} / {employee.totalProbationDays} days
                     </span>
-                    <span className="text-[10px] font-bold text-gray-900 dark:text-gray-100">
+                    <span className="text-xs font-semibold text-gray-900 dark:text-white">
                       {employee.progressPercent}%
                     </span>
                   </div>
-                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-1.5">
+                  <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                     <div 
-                      className={`h-1.5 rounded-full transition-all ${getProgressBarColor(employee.urgencyLevel)}`}
+                      className={`h-2 rounded-full transition-all ${getProgressBarColor(employee.urgencyLevel)}`}
                       style={{ width: `${employee.progressPercent}%` }}
                     ></div>
                   </div>
                 </div>
 
+                {/* Alert */}
                 {employee.urgencyLevel === 'critical' && (
-                  <div className="flex items-center gap-1.5 p-2 bg-rose-50 dark:bg-rose-900/20 rounded border border-rose-200 dark:border-rose-700">
-                    <AlertTriangle size={12} className="text-rose-600" />
-                    <p className="text-[10px] text-rose-700 dark:text-rose-300 font-medium">
-                      Urgent: Probation review must be completed within {employee.daysRemaining} days!
+                  <div className="mt-3 flex items-start gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                    <AlertTriangle size={16} className="text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                    <p className="text-xs text-red-700 dark:text-red-300">
+                      <span className="font-semibold">Action Required:</span> Probation review must be completed within {employee.daysRemaining} days
                     </p>
                   </div>
                 )}
