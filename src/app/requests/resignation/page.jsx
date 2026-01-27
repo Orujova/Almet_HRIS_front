@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { 
   FileText, LogOut, RefreshCw, UserCheck, Settings, Plus,
-  Search, TrendingUp, Clock, Eye, Trash2, Building2, Calendar
+  Search, TrendingUp, Clock, Eye, Trash2, Building2, Calendar, ArrowLeft, User, Briefcase
 } from 'lucide-react';
 import resignationExitService from '@/services/resignationExitService';
 import ConfirmationModal from '@/components/common/ConfirmationModal';
@@ -157,7 +157,7 @@ export default function ResignationExitManagement() {
   const StatsCard = ({ icon: Icon, title, value, color, onClick }) => (
     <button 
       onClick={onClick}
-      className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 hover:shadow-sm transition-all text-left w-full"
+      className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700 hover:shadow-sm hover:border-almet-sapphire dark:hover:border-almet-sapphire transition-all text-left w-full"
     >
       <div className="flex items-center justify-between">
         <div>
@@ -187,7 +187,10 @@ export default function ResignationExitManagement() {
     const Icon = icons[type];
 
     return (
-      <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-sm transition-all">
+      <button
+        onClick={() => onView(item)}
+        className="w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-sm hover:border-almet-sapphire dark:hover:border-almet-sapphire transition-all text-left"
+      >
         <div className="flex items-start gap-3">
           <div className="p-2 bg-almet-mystic dark:bg-almet-cloud-burst/20 rounded-lg">
             <Icon size={16} className="text-almet-sapphire" />
@@ -227,27 +230,18 @@ export default function ResignationExitManagement() {
               )}
             </div>
             
-            <div className="flex items-center gap-2">
+            {userRole.is_admin && (
               <button 
-                onClick={() => onView(item)}
-                className="flex items-center gap-1 px-3 py-1.5 bg-almet-mystic dark:bg-almet-cloud-burst/20 text-almet-sapphire rounded-lg text-xs font-medium hover:bg-almet-sapphire hover:text-white transition-colors"
+                onClick={(e) => { e.stopPropagation(); onDelete(item); }}
+                className="flex items-center gap-1 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-xs font-medium hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
               >
-                <Eye size={12} />
-                View Details
+                <Trash2 size={12} />
+                Delete
               </button>
-              {userRole.is_admin && (
-                <button 
-                  onClick={() => onDelete(item)}
-                  className="flex items-center gap-1 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-xs font-medium hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
-                >
-                  <Trash2 size={12} />
-                  Delete
-                </button>
-              )}
-            </div>
+            )}
           </div>
         </div>
-      </div>
+      </button>
     );
   };
 
@@ -337,7 +331,15 @@ export default function ResignationExitManagement() {
           <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Recent Activity</h3>
           <div className="space-y-2">
             {data.resignations.slice(0, 5).map(item => (
-              <div key={item.id} className="flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-colors">
+              <button
+                key={item.id}
+                onClick={() => {
+                  setSelectedItem(item);
+                  setModalType('resignation_detail');
+                  setShowModal(true);
+                }}
+                className="w-full flex items-center gap-3 p-3 hover:bg-gray-50 dark:hover:bg-gray-700/50 rounded-lg transition-colors text-left"
+              >
                 <div className="p-2 bg-red-50 dark:bg-red-900/20 rounded-lg">
                   <FileText size={14} className="text-red-600 dark:text-red-400" />
                 </div>
@@ -346,7 +348,7 @@ export default function ResignationExitManagement() {
                   <p className="text-xs text-gray-500 dark:text-gray-400">{resignationExitService.helpers.formatDate(item.submission_date)}</p>
                 </div>
                 <StatusBadge status={item.status} />
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -373,7 +375,7 @@ export default function ResignationExitManagement() {
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               placeholder="Search by name or employee ID..."
-              className="w-full pl-10 pr-3 py-2 text-sm border outline-0 border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
+              className="w-full pl-10 pr-3 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
             />
           </div>
           <select
@@ -420,10 +422,28 @@ export default function ResignationExitManagement() {
   return (
     <DashboardLayout>
       <div className="space-y-4">
+        {/* Breadcrumb - only show when not on dashboard */}
+        {activeTab !== 'dashboard' && (
+          <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
+            <button 
+              onClick={() => setActiveTab('dashboard')}
+              className="hover:text-almet-sapphire transition-colors"
+            >
+              Dashboard
+            </button>
+            <span>/</span>
+            <span className="text-gray-900 dark:text-white font-medium">
+              {tabs.find(t => t.id === activeTab)?.label}
+            </span>
+          </div>
+        )}
+
         {/* Header */}
         <div className="bg-gradient-to-r from-almet-sapphire to-almet-astral rounded-lg p-4 text-white shadow-sm">
           <div className="flex items-center gap-3">
-            <Building2 size={24} />
+            <div className="p-2 bg-white/20 rounded-lg">
+              <Building2 size={24} />
+            </div>
             <div>
               <h1 className="text-lg font-semibold">Resignation & Exit Management</h1>
               <p className="text-blue-100 text-xs mt-0.5">Manage employee resignations, exits, and transitions</p>
