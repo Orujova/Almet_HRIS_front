@@ -3,26 +3,28 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import {
-  UsersRound,
   FileText, 
+  Network,
+  UsersRound,
   BarChart2,
-  GraduationCap,
+  Layers,
   Activity,
+  Repeat,
   CalendarDays,
-  Plane,
-  Newspaper,
-  Gift,
-  Package,
-  RefreshCw,
+  AlarmClock,
+  ShieldCheck,
+  ListChecks,
+  Boxes,
+  PartyPopper,
   UserCog,
-  Building2,
-  Clock,
+  Brain,
   ScrollText,
-  BookOpenCheck,
-  User,
+  LogOut,
+  PlaneTakeoff,
+  GraduationCap,
   ChevronRight,
   FileSignature,
-  Target
+  Megaphone
 } from "lucide-react";
 import { employeeService } from '@/services/newsService';
 
@@ -110,40 +112,40 @@ const Sidebar = ({ collapsed = false }) => {
       }, 
       {
         label: "Org Structure",
-        icon: <Building2 className="w-4 h-4" />,
+        icon: <Network  className="w-4 h-4" />,
         path: "/structure/org-structure",
         id: "org-structure"
       },
       {
         label: "Headcount Table",
-        icon: <UsersRound className="w-4 h-4" />,
+        icon: <UsersRound  className="w-4 h-4" />,
         path: "/structure/headcount-table",
         id: "headcount-table",
         requiredRole: ['admin', 'manager']
       },
       {
         label: "Job Descriptions",
-        icon: <FileText className="w-4 h-4" />,
+        icon: <FileText  className="w-4 h-4" />,
         path: "/structure/job-descriptions",
         id: "job-descriptions",
         requiredRole: ['admin', 'manager']
       },
       {
         label: "Competency Matrix",
-        icon: <BarChart2 className="w-4 h-4" />,
+        icon: <BarChart2   className="w-4 h-4" />,
         path: "/structure/comp-matrix",
         id: "comp-matrix"
       },
       {
         label: "Job Catalog",
-        icon: <ScrollText className="w-4 h-4" />,
+        icon: <ScrollText   className="w-4 h-4" />,
         path: "/structure/job-catalog",
         id: "job-catalog",
         requiredRole: ['admin']
       },
       {
         label: "Grading System",
-        icon: <GraduationCap className="w-4 h-4" />,
+        icon: <Layers  className="w-4 h-4" />,
         path: "/structure/grading",
         id: "grading",
         requiredRole: ['admin']
@@ -160,10 +162,17 @@ const Sidebar = ({ collapsed = false }) => {
       },
       {
         label: "Skills Matrix",
-        icon: <Target className="w-4 h-4" />,
+        icon: <Brain  className="w-4 h-4" />,
         path: "/efficiency/self-assessment",
         id: "self-assessment",
         requiredRole: ['admin']
+      },
+      {
+        label: "Contracts/Probation",
+        icon: <FileSignature className="w-4 h-4" />,
+        path: "/efficiency/contracts",
+        id: "contracts",
+
       },
       { 
         type: "section", 
@@ -171,7 +180,7 @@ const Sidebar = ({ collapsed = false }) => {
       },
       {
         label: "Training",
-        icon: <BookOpenCheck className="w-4 h-4" />,
+        icon: <GraduationCap  className="w-4 h-4" />,
         path: "/training",
         id: "training"
       },
@@ -181,33 +190,33 @@ const Sidebar = ({ collapsed = false }) => {
       },
       
       {
-        label: "Resignation & Offboarding",
-        icon: <FileText className="w-4 h-4" />,
+        label: "Resignation/Offboarding",
+        icon: <LogOut  className="w-4 h-4" />,
         path: "/requests/resignation",
         id: "resignation",
       
       },
       {
         label: "Vacation Request",
-        icon: <CalendarDays className="w-4 h-4" />,
+        icon: <CalendarDays  className="w-4 h-4" />,
         path: "/requests/vacation",
         id: "vacation"
       },
       {
         label: "Handover/Takeover",
-        icon: <RefreshCw className="w-4 h-4" />,
+        icon: <Repeat className="w-4 h-4" />,
         path: "/requests/handover-takeover",
         id: "handover-takeover"
       },
       {
         label: "Business Trip",
-        icon: <Plane className="w-4 h-4" />,
+        icon: <PlaneTakeoff className="w-4 h-4" />,
         path: "/requests/business-trip",
         id: "business-trip"
       },
       {
         label: "Time Off Request",
-        icon: <Clock className="w-4 h-4" />,
+        icon: <AlarmClock className="w-4 h-4" />,
         path: "/requests/time-off",
         id: "time-off"
       },
@@ -217,13 +226,13 @@ const Sidebar = ({ collapsed = false }) => {
       },
       {
         label: "Company News",
-        icon: <Newspaper className="w-4 h-4" />,
+        icon: <Megaphone className="w-4 h-4" />,
         path: "/communication/company-news",
         id: "company-news"
       },
       {
         label: "Celebrations",
-        icon: <Gift className="w-4 h-4" />,
+        icon: <PartyPopper className="w-4 h-4" />,
         path: "/communication/celebrations",
         id: "celebrations"
       }, 
@@ -233,13 +242,13 @@ const Sidebar = ({ collapsed = false }) => {
       },
       {
         label: "Company Policies",
-        icon: <ScrollText className="w-4 h-4" />,
+        icon: <ShieldCheck className="w-4 h-4" />,
         path: "/company-policies",
         id: "policies"
       }, 
       {
         label: " Procedures",
-        icon: <FileText className="w-4 h-4" />,
+        icon: <ListChecks className="w-4 h-4" />,
         path: "/company-procedures",
         id: "procedures"
       }, 
@@ -250,7 +259,7 @@ const Sidebar = ({ collapsed = false }) => {
       },
       {
         label: "Asset Management",
-        icon: <Package className="w-4 h-4" />,
+        icon: <Boxes  className="w-4 h-4" />,
         path: "/settings/asset-mng",
         id: "asset-mng",
         requiredRole: ['admin']

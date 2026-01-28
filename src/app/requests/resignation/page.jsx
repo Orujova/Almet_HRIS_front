@@ -1,13 +1,11 @@
-// ========================================
-// MAIN PAGE: ResignationExitManagement.jsx
-// ========================================
+// Updated app/(dashboard)/resignation-exit/page.jsx
 'use client';
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { 
-  FileText, LogOut, RefreshCw, UserCheck, Settings, Plus,
-  Search, Clock, Eye, Trash2, Building2, Calendar, ArrowLeft, 
-  ChevronRight, Home, AlertCircle
+  FileText, LogOut, Plus, Search, Clock, Eye, Trash2, 
+  Building2, Calendar, ArrowLeft, ChevronRight, Home, Settings,
+  RefreshCw, UserCheck, TrendingUp
 } from 'lucide-react';
 import resignationExitService from '@/services/resignationExitService';
 import ConfirmationModal from '@/components/common/ConfirmationModal';
@@ -17,8 +15,6 @@ import { LoadingSpinner } from '@/components/common/LoadingSpinner';
 import ResignationSubmissionModal from '@/components/resignation/ResignationSubmissionModal';
 import ResignationDetailModal from '@/components/resignation/ResignationDetailModal';
 import ExitInterviewModal from '@/components/resignation/ExitInterviewModal';
-import ContractRenewalModal from '@/components/resignation/ContractRenewalModal';
-import ProbationReviewModal from '@/components/resignation/ProbationReviewModal';
 import CreateExitInterviewModal from '@/components/resignation/CreateExitInterviewModal';
 import ViewExitInterviewModal from '@/components/resignation/ViewExitInterviewModal';
 
@@ -27,18 +23,14 @@ export default function ResignationExitManagement() {
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState('employee');
   
-  // View states: 'home', 'resignations', 'exits', 'contracts', 'probation', 'detail'
   const [currentView, setCurrentView] = useState('home');
   const [selectedItem, setSelectedItem] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [modalType, setModalType] = useState('');
-  const [respondentType, setRespondentType] = useState('EMPLOYEE');
   
   const [data, setData] = useState({
     resignations: [],
-    exitInterviews: [],
-    contractRenewals: [],
-    probationReviews: []
+    exitInterviews: []
   });
   
   const [searchTerm, setSearchTerm] = useState('');
@@ -80,33 +72,15 @@ export default function ResignationExitManagement() {
 
   const loadDataForRole = async (role) => {
     try {
-      if (role.is_admin || role.is_manager) {
-        const [resigs, exits, contracts, probations] = await Promise.all([
-          resignationExitService.resignation.getResignations().catch(() => ({ results: [] })),
-          resignationExitService.exitInterview.getExitInterviews().catch(() => ({ results: [] })),
-          resignationExitService.contractRenewal.getContractRenewals().catch(() => ({ results: [] })),
-          resignationExitService.probationReview.getProbationReviews().catch(() => ({ results: [] }))
-        ]);
-        
-        setData({
-          resignations: resigs.results || [],
-          exitInterviews: exits.results || [],
-          contractRenewals: contracts.results || [],
-          probationReviews: probations.results || []
-        });
-      } else {
-        const [resigs, exits] = await Promise.all([
-          resignationExitService.resignation.getResignations().catch(() => ({ results: [] })),
-          resignationExitService.exitInterview.getExitInterviews().catch(() => ({ results: [] }))
-        ]);
-        
-        setData({
-          resignations: resigs.results || [],
-          exitInterviews: exits.results || [],
-          contractRenewals: [],
-          probationReviews: []
-        });
-      }
+      const [resigs, exits] = await Promise.all([
+        resignationExitService.resignation.getResignations().catch(() => ({ results: [] })),
+        resignationExitService.exitInterview.getExitInterviews().catch(() => ({ results: [] }))
+      ]);
+      
+      setData({
+        resignations: resigs.results || [],
+        exitInterviews: exits.results || []
+      });
     } catch (error) {
       console.error('Error loading data:', error);
     }
@@ -121,12 +95,6 @@ export default function ResignationExitManagement() {
           break;
         case 'exit':
           await resignationExitService.exitInterview.deleteExitInterview(item.id);
-          break;
-        case 'contract':
-          await resignationExitService.contractRenewal.deleteContractRenewal(item.id);
-          break;
-        case 'probation':
-          await resignationExitService.probationReview.deleteProbationReview(item.id);
           break;
       }
       await loadDataForRole(userRole);
@@ -165,7 +133,6 @@ export default function ResignationExitManagement() {
     setShowModal(true);
   };
 
-  // Components
   const Breadcrumb = ({ path }) => (
     <div className="flex items-center gap-2 text-sm mb-4">
       <button 
@@ -219,9 +186,7 @@ export default function ResignationExitManagement() {
   const ListItem = ({ item, type, onView, onDelete }) => {
     const icons = { 
       resignation: FileText, 
-      exit: LogOut, 
-      contract: RefreshCw, 
-      probation: UserCheck 
+      exit: LogOut
     };
     const Icon = icons[type];
 
@@ -290,12 +255,9 @@ export default function ResignationExitManagement() {
     );
   };
 
-  // Views
   const HomeView = () => {
     const pendingResignations = data.resignations.filter(r => ['PENDING_MANAGER', 'PENDING_HR'].includes(r.status));
     const pendingExits = data.exitInterviews.filter(e => e.status === 'PENDING');
-    const urgentContracts = data.contractRenewals.filter(c => c.days_until_expiry <= 14);
-    const pendingReviews = data.probationReviews.filter(p => p.status === 'PENDING');
 
     return (
       <div className="space-y-6">
@@ -303,7 +265,7 @@ export default function ResignationExitManagement() {
         <div className="bg-gradient-to-br from-almet-sapphire via-almet-astral to-almet-steel-blue rounded-xl p-6 text-white">
           <h2 className="text-xl font-bold mb-2">Employee Offboarding</h2>
           <p className="text-blue-100 text-sm">
-            Manage resignations, exit interviews, contract renewals, and probation reviews
+            Manage resignations and exit interviews
           </p>
         </div>
 
@@ -313,7 +275,7 @@ export default function ResignationExitManagement() {
             <Plus size={18} className="text-almet-sapphire" />
             Quick Actions
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             <button 
               onClick={() => { setModalType('submit_resignation'); setShowModal(true); }}
               className="bg-white dark:bg-gray-800 rounded-lg p-4 border-2 border-gray-200 dark:border-gray-700 hover:border-red-500 dark:hover:border-red-500 hover:shadow-lg transition-all group"
@@ -339,25 +301,14 @@ export default function ResignationExitManagement() {
                 </button>
 
                 <button 
-                  onClick={() => window.location.href = 'question-management'}
+                  onClick={() => window.location.href = 'question-management/'}
                   className="bg-white dark:bg-gray-800 rounded-lg p-4 border-2 border-gray-200 dark:border-gray-700 hover:border-purple-500 dark:hover:border-purple-500 hover:shadow-lg transition-all group"
                 >
                   <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg mb-3 group-hover:bg-purple-500 group-hover:text-white transition-colors inline-flex">
-                    <Settings size={20} className="text-purple-600 dark:text-purple-400 group-hover:text-white" />
+                    <TrendingUp size={20} className="text-purple-600 dark:text-purple-400 group-hover:text-white" />
                   </div>
                   <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Manage Questions</h4>
                   <p className="text-xs text-gray-600 dark:text-gray-400">Configure interview questions</p>
-                </button>
-
-                <button 
-                  onClick={() => window.location.href = 'probation-tracking'}
-                  className="bg-white dark:bg-gray-800 rounded-lg p-4 border-2 border-gray-200 dark:border-gray-700 hover:border-amber-500 dark:hover:border-amber-500 hover:shadow-lg transition-all group"
-                >
-                  <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg mb-3 group-hover:bg-amber-500 group-hover:text-white transition-colors inline-flex">
-                    <Clock size={20} className="text-amber-600 dark:text-amber-400 group-hover:text-white" />
-                  </div>
-                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Probation Tracking</h4>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">Monitor probation periods</p>
                 </button>
               </>
             )}
@@ -384,30 +335,8 @@ export default function ResignationExitManagement() {
               color="bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
               onClick={() => navigateToView('exits')}
             />
-            {(userRole.is_admin || userRole.is_manager) && (
-              <>
-                <ActionCard
-                  icon={RefreshCw}
-                  title="Contract Renewals"
-                  description="Track and manage contract expiration dates"
-                  count={urgentContracts.length}
-                  color="bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400"
-                  onClick={() => navigateToView('contracts')}
-                />
-                <ActionCard
-                  icon={UserCheck}
-                  title="Probation Reviews"
-                  description="Manage employee probation period evaluations"
-                  count={pendingReviews.length}
-                  color="bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400"
-                  onClick={() => navigateToView('probation')}
-                />
-              </>
-            )}
           </div>
         </div>
-
-        
       </div>
     );
   };
@@ -424,7 +353,6 @@ export default function ResignationExitManagement() {
       <div className="space-y-4">
         <Breadcrumb path={[title]} />
 
-        {/* Page Header */}
         <div className="bg-gradient-to-br from-almet-sapphire to-almet-astral rounded-xl p-6 text-white">
           <div className="flex items-center gap-3 mb-4">
             <div className="p-3 bg-white/20 rounded-lg">
@@ -446,7 +374,6 @@ export default function ResignationExitManagement() {
           </button>
         </div>
 
-        {/* Filters */}
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="relative flex-1">
@@ -473,7 +400,6 @@ export default function ResignationExitManagement() {
           </div>
         </div>
 
-        {/* List */}
         {filtered.length === 0 ? (
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-12 text-center">
             <Icon size={48} className="mx-auto text-gray-400 mb-4" />
@@ -495,7 +421,7 @@ export default function ResignationExitManagement() {
                 key={item.id} 
                 item={item} 
                 type={type}
-                onView={(item) => openDetailModal(item, type === 'resignation' ? 'resignation_detail' : type === 'exit' ? 'exit_interview' : type === 'contract' ? 'contract_renewal' : 'probation_review')}
+                onView={(item) => openDetailModal(item, type === 'resignation' ? 'resignation_detail' : 'exit_interview')}
                 onDelete={(item) => setDeleteModal({ show: true, item, type })}
               />
             ))}
@@ -510,14 +436,10 @@ export default function ResignationExitManagement() {
   return (
     <DashboardLayout>
       <div className="max-w-7xl mx-auto">
-        {/* Main Content */}
         {currentView === 'home' && <HomeView />}
         {currentView === 'resignations' && <ListView items={data.resignations} type="resignation" title="Resignations" icon={FileText} />}
         {currentView === 'exits' && <ListView items={data.exitInterviews} type="exit" title="Exit Interviews" icon={LogOut} />}
-        {currentView === 'contracts' && <ListView items={data.contractRenewals} type="contract" title="Contract Renewals" icon={RefreshCw} />}
-        {currentView === 'probation' && <ListView items={data.probationReviews} type="probation" title="Probation Reviews" icon={UserCheck} />}
 
-        {/* Modals */}
         {showModal && (
           <>
             {modalType === 'submit_resignation' && (
@@ -536,16 +458,9 @@ export default function ResignationExitManagement() {
             {modalType === 'create_exit_interview' && (
               <CreateExitInterviewModal onClose={handleModalClose} onSuccess={handleModalSuccess} />
             )}
-            {modalType === 'contract_renewal' && selectedItem && (
-              <ContractRenewalModal contract={selectedItem} onClose={handleModalClose} onSuccess={handleModalSuccess} userRole={userRole} />
-            )}
-            {modalType === 'probation_review' && selectedItem && (
-              <ProbationReviewModal review={selectedItem} onClose={handleModalClose} onSuccess={handleModalSuccess} respondentType={respondentType} />
-            )}
           </>
         )}
 
-        {/* Delete Confirmation */}
         <ConfirmationModal
           isOpen={deleteModal.show}
           onClose={() => setDeleteModal({ show: false, item: null, type: '' })}

@@ -1,7 +1,7 @@
-// ProbationReviewModal.jsx
+// components/resignation/ProbationReviewModal.jsx
 'use client';
 import React, { useState, useEffect } from 'react';
-import { X, Save, ChevronLeft, ChevronRight, Check, User, Briefcase, Calendar } from 'lucide-react';
+import { X, Save, ChevronLeft, ChevronRight, Check, User, Briefcase, Calendar, AlertCircle } from 'lucide-react';
 import resignationExitService from '@/services/resignationExitService';
 
 export default function ProbationReviewModal({ review, onClose, onSuccess, respondentType }) {
@@ -21,13 +21,33 @@ export default function ProbationReviewModal({ review, onClose, onSuccess, respo
     try {
       setLoading(true);
       
+      // ✅ Construct review_type correctly
       const reviewTypePrefix = isEmployee ? 'EMPLOYEE' : 'MANAGER';
-      const reviewTypeSuffix = review.review_period.split('_')[0];
-      const reviewType = `${reviewTypePrefix}_${reviewTypeSuffix}`;
+      const reviewTypeSuffix = review.review_period.split('_')[0]; // "30", "60", "90"
+      const reviewType = `${reviewTypePrefix}_${reviewTypeSuffix}`; // "EMPLOYEE_30", "MANAGER_30"
       
+      console.log('🔍 Loading questions for:', {
+        review_period: review.review_period,
+        respondentType,
+        reviewType,
+        isEmployee
+      });
+      
+      // ✅ Call API with review_type filter
       const data = await resignationExitService.probationReview.getQuestions(reviewType);
+      
+      console.log('✅ Loaded questions:', data);
+      
+      if (!data || data.length === 0) {
+        console.warn(`⚠️ No questions found for ${reviewType}`);
+        setQuestions([]);
+        setLoading(false);
+        return;
+      }
+      
       setQuestions(data);
       
+      // Initialize responses
       const initialResponses = {};
       data.forEach(q => {
         initialResponses[q.id] = {
@@ -38,9 +58,10 @@ export default function ProbationReviewModal({ review, onClose, onSuccess, respo
         };
       });
       setResponses(initialResponses);
+      
     } catch (err) {
-      console.error('Error loading questions:', err);
-      alert('Failed to load probation review questions');
+      console.error('❌ Error loading questions:', err);
+      alert('Failed to load probation review questions. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -57,19 +78,23 @@ export default function ProbationReviewModal({ review, onClose, onSuccess, respo
     try {
       setSubmitting(true);
       
+      // Validate required questions
       const requiredQuestions = questions.filter(q => q.is_required);
       for (const q of requiredQuestions) {
         const response = responses[q.id];
         if (q.question_type === 'RATING' && !response.rating_value) {
           alert(`Please answer: ${q.question_text_en}`);
+          setSubmitting(false);
           return;
         }
         if (q.question_type === 'YES_NO' && response.yes_no_value === null) {
           alert(`Please answer: ${q.question_text_en}`);
+          setSubmitting(false);
           return;
         }
-        if (q.question_type === 'TEXT' && !response.text_value.trim()) {
+        if ((q.question_type === 'TEXT' || q.question_type === 'TEXTAREA') && !response.text_value.trim()) {
           alert(`Please answer: ${q.question_text_en}`);
+          setSubmitting(false);
           return;
         }
       }
@@ -85,8 +110,8 @@ export default function ProbationReviewModal({ review, onClose, onSuccess, respo
       onClose();
 
     } catch (err) {
-      console.error('Error submitting:', err);
-      alert('Failed to submit. Please try again.');
+      console.error('❌ Error submitting:', err);
+      alert(err.response?.data?.detail || 'Failed to submit. Please try again.');
     } finally {
       setSubmitting(false);
     }
@@ -102,7 +127,7 @@ export default function ProbationReviewModal({ review, onClose, onSuccess, respo
           {question.question_text_en}
           {question.is_required && <span className="text-red-500 ml-1">*</span>}
         </label>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {[1, 2, 3, 4, 5].map((rating) => (
             <button
               key={rating}
@@ -226,6 +251,33 @@ export default function ProbationReviewModal({ review, onClose, onSuccess, respo
     );
   }
 
+  // ✅ If no questions, show error state
+  if (questions.length === 0) {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-md w-full p-6">
+          <div className="text-center">
+            <div className="w-16 h-16 bg-amber-100 dark:bg-amber-900/20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <AlertCircle size={32} className="text-amber-600 dark:text-amber-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
+              No Questions Available
+            </h3>
+            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+              No questions have been configured for this probation review yet. Please contact HR to add questions for {isEmployee ? 'Employee' : 'Manager'} {review.review_period.replace('_', ' ')} review.
+            </p>
+            <button
+              onClick={onClose}
+              className="px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors text-sm font-medium"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-hidden flex flex-col">
@@ -314,7 +366,7 @@ export default function ProbationReviewModal({ review, onClose, onSuccess, respo
           <button
             onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
             disabled={currentStep === 0 || submitting}
-            className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-4 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             <ChevronLeft size={16} /> Previous
           </button>
@@ -322,7 +374,8 @@ export default function ProbationReviewModal({ review, onClose, onSuccess, respo
           {!isLastStep ? (
             <button
               onClick={() => setCurrentStep(Math.min(sections.length - 1, currentStep + 1))}
-              className="flex items-center gap-2 px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral text-sm font-medium"
+              disabled={submitting}
+              className="flex items-center gap-2 px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral text-sm font-medium transition-colors"
             >
               Next <ChevronRight size={16} />
             </button>
@@ -330,7 +383,7 @@ export default function ProbationReviewModal({ review, onClose, onSuccess, respo
             <button
               onClick={handleSubmit}
               disabled={submitting}
-              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 text-sm font-medium disabled:opacity-50 transition-colors"
             >
               {submitting ? (
                 <>
