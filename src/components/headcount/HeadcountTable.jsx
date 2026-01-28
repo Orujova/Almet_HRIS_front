@@ -7,7 +7,7 @@ import { useToast } from "../common/Toast";
 import { useEmployees } from "../../hooks/useEmployees";
 import { useVacantPositions } from "../../hooks/useVacantPositions";
 import { useReferenceData } from "../../hooks/useReferenceData";
-
+import { useDispatch } from "react-redux";
 // Import tab content components
 import VacantPositionsTable from "./VacantPositionsTable";
 import ArchiveEmployeesTable from "./ArchiveEmployeesTable";
@@ -26,11 +26,11 @@ import BulkUploadForm from "./BulkUploadForm";
 import { AdvancedMultipleSortingSystem } from "./MultipleSortingSystem";
 import LineManagerModal from "./LineManagerAssignModal";
 import TagManagementModal from "./TagManagementModalsingle";
-
+import { employeeAPI } from '../../store/api/employeeAPI';
 const HeadcountTable = ({ businessFunctionFilter = null }) => {
   const { darkMode } = useTheme();
   const { showSuccess, showError, showWarning, showInfo } = useToast();
-  
+   const dispatch = useDispatch();
   const [activeTab, setActiveTab] = useState('employees');
   
   const {
@@ -995,110 +995,70 @@ const handleStatusChange = useCallback((selectedStatuses) => {
     setIsActionMenuOpen(false);
   }, []);
 
-  const handleExport = useCallback(async (exportOptions) => {
-    try {
-      setIsExporting(true);
+const handleExport = useCallback(async (exportOptions) => {
+  try {
+    setIsExporting(true);
 
-      let apiEndpoint;
-      let apiPayload;
-      let queryParams = {};
+    let exportParams = {
+      format: exportOptions.format || 'excel',
+      include_fields: exportOptions.include_fields || []
+    };
 
-      switch (exportOptions.type) {
-        case "selected":
-          if (!selectedEmployees || selectedEmployees.length === 0) {
-            throw new Error("No employees selected for export!");
-          }
-          
-          apiEndpoint = 'export_selected';
-          apiPayload = {
-            employee_ids: selectedEmployees,
-            export_format: exportOptions.format || 'excel'
-          };
-          
-          if (exportOptions.include_fields && Array.isArray(exportOptions.include_fields) && exportOptions.include_fields.length > 0) {
-            apiPayload.include_fields = exportOptions.include_fields;
-          }
-          break;
+    switch (exportOptions.type) {
+      case "selected":
+        if (!selectedEmployees || selectedEmployees.length === 0) {
+          throw new Error("Seçilmiş işçi yoxdur!");
+        }
+        exportParams.employee_ids = selectedEmployees;
+        break;
 
-        case "filtered":
-          apiEndpoint = 'export_selected';
-          
-          const filterParams = { ...buildApiParams() };
-          delete filterParams.page;
-          delete filterParams.page_size;
-          
-          apiPayload = {
-            export_format: exportOptions.format || 'excel'
-          };
-          
-          if (exportOptions.include_fields && Array.isArray(exportOptions.include_fields) && exportOptions.include_fields.length > 0) {
-            apiPayload.include_fields = exportOptions.include_fields;
-          }
-          
-          queryParams = filterParams;
-          break;
+      case "filtered":
+        const currentFilters = buildApiParams();
+        const filterParams = { ...currentFilters };
+        delete filterParams.page;
+        delete filterParams.page_size;
+        delete filterParams.use_pagination;
+        
+        console.log('🔍 Applying filters to export:', filterParams);
+        exportParams._queryParams = filterParams;
+        break;
 
-        case "all":
-          apiEndpoint = 'export_selected';
-          apiPayload = {
-            export_format: exportOptions.format || 'excel'
-          };
-          
-          if (exportOptions.include_fields && Array.isArray(exportOptions.include_fields) && exportOptions.include_fields.length > 0) {
-            apiPayload.include_fields = exportOptions.include_fields;
-          }
-          break;
-
-        default:
-          throw new Error(`Unknown export type: ${exportOptions.type}`);
-      }
-
-      const result = await exportEmployees(exportOptions.format || 'excel', {
-        ...apiPayload,
-        _queryParams: queryParams
-      });
-      
-      const exportTypeLabel = exportOptions.type === "selected" 
-        ? `${selectedEmployees?.length || 0} selected` 
-        : exportOptions.type === "filtered" 
-        ? "filtered"
-        : "all";
-      
-      const fieldsCount = exportOptions.include_fields?.length || 'default';
-      showSuccess(`Export completed! ${exportTypeLabel} employees exported with ${fieldsCount} fields.`);
-      
-      return result;
-
-    } catch (error) {
-      console.error('Export error:', error);
-      
-      let userFriendlyMessage = error.message || "Export failed. Please try again.";
-      
-      if (error.message?.includes('No employees selected')) {
-        userFriendlyMessage = "Please select at least one employee to export.";
-      } else if (error.message?.includes('Invalid fields')) {
-        userFriendlyMessage = "Some selected fields are not available. Please check your field selection.";
-      } else if (error.message?.includes('No data received')) {
-        userFriendlyMessage = "Export failed - no data returned from server. Please check your selection.";
-      }
-      
-      showError(`Export failed: ${userFriendlyMessage}`);
-      throw error;
-    } finally {
-      setIsExporting(false);
+      case "all":
+        exportParams._queryParams = {};
+        break;
     }
-  }, [selectedEmployees, buildApiParams, exportEmployees, showInfo, showSuccess, showError]);
 
-  const handleQuickExport = useCallback(async (exportOptions) => {
-    try {
-      setIsExporting(true);
-      await handleExport(exportOptions);
-    } catch (error) {
-      showError(`Export failed: ${error.message}`);
-    } finally {
-      setIsExporting(false);
-    }
-  }, [handleExport, showError]);
+    console.log('📤 Calling export with params:', exportParams);
+
+    // ✅ FIX: Call API directly instead of through Redux
+    const response = await employeeAPI.export(exportParams);
+    
+    const exportTypeLabel = exportOptions.type === "selected" 
+      ? `${selectedEmployees?.length || 0} seçilmiş` 
+      : exportOptions.type === "filtered" 
+      ? "filterləşdirilmiş"
+      : "bütün";
+    
+    toast.success(`✅ ${exportTypeLabel} işçilər export edildi.`);
+    
+    return response;
+
+  } catch (error) {
+    console.error('❌ Export error:', error);
+    toast.error(`Export alınmadı: ${error.message || 'Xəta baş verdi'}`);
+    throw error;
+  } finally {
+    setIsExporting(false);
+  }
+}, [selectedEmployees, buildApiParams]);
+
+const handleQuickExport = useCallback(async (format) => {
+  await handleExport({
+    type: selectedEmployees.length > 0 ? "selected" : "filtered",
+    format: format,
+    include_fields: 'all'
+  });
+}, [handleExport, selectedEmployees]);
 
   const handleBulkImportComplete = useCallback(async (result) => {
     try {

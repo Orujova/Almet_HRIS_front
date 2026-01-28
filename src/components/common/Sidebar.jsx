@@ -181,7 +181,7 @@ const Sidebar = ({ collapsed = false }) => {
       },
       
       {
-        label: "Offboarding",
+        label: "Resignation & Offboarding",
         icon: <FileText className="w-4 h-4" />,
         path: "/requests/resignation",
         id: "resignation",

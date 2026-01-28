@@ -512,8 +512,30 @@ export const employeeAPI = {
   // ========================================
   // EXPORT AND TEMPLATES
   // ========================================
-  export: (params = {}) => apiService.exportEmployees(params),
-  downloadTemplate: () => apiService.downloadEmployeeTemplate(),
+// employeeAPI.js - export method UPDATE
+
+export: (params = {}) => {
+  console.log('📤 employeeAPI.export called with params:', params);
+  
+  // ✅ Extract all params properly
+  const filterParams = params._queryParams || {};
+  
+  const exportPayload = {
+    export_format: params.format || 'excel',
+    employee_ids: params.employee_ids || [],
+    include_fields: params.include_fields || 'all',
+    ...filterParams // ✅ Spread filter params directly
+  };
+  
+  console.log('📋 Export payload to apiService:', exportPayload);
+  
+  // ✅ Call apiService
+  return apiService.exportEmployees(
+    exportPayload.export_format,
+    exportPayload
+  );
+},
+downloadTemplate: () => apiService.downloadEmployeeTemplate(),
   
   // ========================================
   // GRADING MANAGEMENT

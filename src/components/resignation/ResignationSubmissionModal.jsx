@@ -145,7 +145,7 @@ export default function ResignationSubmissionModal({ onClose, onSuccess, current
               value={formData.last_working_day}
               onChange={(e) => setFormData({...formData, last_working_day: e.target.value})}
               min={new Date().toISOString().split('T')[0]}
-              className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
+              className="w-full px-3 py-2 text-sm border outline-0 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
             />
             {formData.last_working_day && (
               <p className="mt-2 text-xs text-gray-600 dark:text-gray-400">{calculateNoticePeriod()}</p>

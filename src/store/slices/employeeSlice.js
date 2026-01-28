@@ -284,18 +284,30 @@ export const fetchEmployeeGrading = createAsyncThunk(
 // EXPORT & TEMPLATES
 // ========================================
 
+// Redux slice - exportEmployees thunk UPDATE
+
 export const exportEmployees = createAsyncThunk(
   'employees/exportEmployees',
   async ({ format = 'excel', params = {} }, { rejectWithValue }) => {
     try {
-      const response = await employeeAPI.export({ format, ...params });
-      return { format, recordCount: params.employee_ids?.length || 'all' };
+      console.log('🎯 Redux exportEmployees thunk:', { format, params });
+      
+      const response = await employeeAPI.export({ 
+        format, 
+        ...params 
+      });
+      
+      return { 
+        format, 
+        recordCount: params.employee_ids?.length || 'filtered',
+        success: true
+      };
     } catch (error) {
-      return rejectWithValue(error.data || error.message);
+      console.error('❌ Redux export error:', error);
+      return rejectWithValue(error.data || error.message || 'Export failed');
     }
   }
 );
-
 export const downloadEmployeeTemplate = createAsyncThunk(
   'employees/downloadEmployeeTemplate',
   async (_, { rejectWithValue }) => {
