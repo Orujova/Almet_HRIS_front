@@ -1,4 +1,4 @@
-// src/app/structure/employee/[id]/page.jsx - COMPLETE VERSION
+// src/app/structure/employee/[id]/page.jsx - WITH PROBATION REVIEWS TAB
 "use client";
 import { useState, useEffect } from "react";
 import { useParams, useRouter } from "next/navigation";
@@ -36,12 +36,13 @@ import {
   Maximize2,
   Minimize2,
   LogOut,
-  UserX,
   CheckCircle,
   AlertCircle,
-  Send,
   MessageSquare,
-  XCircle
+  XCircle,
+  Star,
+  ThumbsUp,
+  MessageCircle
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
@@ -80,21 +81,20 @@ const EmployeeDetailPageContent = () => {
     status: true
   });
 
-  // 🆕 Resignation & Probation States
+  // Resignation & Probation States
   const [showResignationModal, setShowResignationModal] = useState(false);
   const [showProbationModal, setShowProbationModal] = useState(false);
   const [probationInfo, setProbationInfo] = useState(null);
-  const [pendingProbationReviews, setPendingProbationReviews] = useState([]);
-  const [completedProbationReviews, setCompletedProbationReviews] = useState([]);
+  const [allProbationReviews, setAllProbationReviews] = useState([]);
   const [loadingProbation, setLoadingProbation] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [contractConfigs, setContractConfigs] = useState({});
   const [selectedReview, setSelectedReview] = useState(null);
+  const [activeReviewFilter, setActiveReviewFilter] = useState('all'); // 'all', 'employee', 'manager'
 
   // Theme classes
   const bgPrimary = darkMode ? "bg-almet-cloud-burst" : "bg-almet-mystic";
   const bgCard = darkMode ? "bg-almet-san-juan" : "bg-white";
-  const bgCardHover = darkMode ? "bg-almet-comet" : "bg-gray-50";
   const textPrimary = darkMode ? "text-white" : "text-almet-cloud-burst";
   const textSecondary = darkMode ? "text-almet-bali-hai" : "text-almet-waterloo";
   const textMuted = darkMode ? "text-almet-santas-gray" : "text-almet-bali-hai";
@@ -109,7 +109,6 @@ const EmployeeDetailPageContent = () => {
 
   const isManager = currentEmployee?.direct_reports && currentEmployee.direct_reports.length > 0;
 
-  // 🆕 Load initial data
   useEffect(() => {
     if (id) {
       fetchEmployee(id);
@@ -122,7 +121,6 @@ const EmployeeDetailPageContent = () => {
     };
   }, [id]);
 
-  // 🆕 Load probation info when employee data changes
   useEffect(() => {
     if (currentEmployee) {
       setCurrentProfilePhoto(
@@ -131,14 +129,11 @@ const EmployeeDetailPageContent = () => {
         null
       );
       
-      // Check if employee is in probation
-      if (currentEmployee.status_name?.toUpperCase().includes('PROBATION')) {
-        loadProbationData();
-      }
+      // Always load probation data (even if not in probation status)
+      loadProbationData();
     }
   }, [currentEmployee]);
 
-  // 🆕 Load user info
   const loadUserInfo = async () => {
     try {
       const userInfo = await resignationExitService.getCurrentUser();
@@ -158,7 +153,6 @@ const EmployeeDetailPageContent = () => {
     }
   };
 
-  // 🆕 Load contract configs
   const loadContractConfigs = async () => {
     try {
       const contractResponse = await apiService.getContractConfigs();
@@ -179,13 +173,16 @@ const EmployeeDetailPageContent = () => {
     }
   };
 
-  // 🆕 Load probation data
+  // 🆕 Load ALL probation reviews
   const loadProbationData = async () => {
     try {
       setLoadingProbation(true);
       
-      // Calculate probation info
-      if (currentEmployee.start_date && currentEmployee.contract_duration) {
+      // Calculate probation info if in probation
+      if (currentEmployee.status_name?.toUpperCase().includes('PROBATION') && 
+          currentEmployee.start_date && 
+          currentEmployee.contract_duration) {
+        
         const contractConfig = contractConfigs[currentEmployee.contract_duration];
         const totalProbationDays = contractConfig?.probation_days || 90;
         
@@ -220,11 +217,7 @@ const EmployeeDetailPageContent = () => {
         employee: id
       });
       
-      const allReviews = response.results || [];
-      
-      // Separate pending and completed
-      setPendingProbationReviews(allReviews.filter(r => r.status === 'PENDING'));
-      setCompletedProbationReviews(allReviews.filter(r => r.status === 'COMPLETED'));
+      setAllProbationReviews(response.results || []);
       
     } catch (error) {
       console.error('Error loading probation data:', error);
@@ -233,10 +226,27 @@ const EmployeeDetailPageContent = () => {
     }
   };
 
-  // 🆕 Check if current user is viewing their own profile
-  // const isOwnProfile = currentUser?.id === currentEmployee?.id;
+  const isOwnProfile = currentUser?.id === currentEmployee?.id;
 
-  // Enhanced field getters
+  // 🆕 Filter reviews based on respondent type
+  const getFilteredReviews = () => {
+    if (activeReviewFilter === 'employee') {
+      return allProbationReviews.filter(r => 
+        r.employee_responses && r.employee_responses.length > 0
+      );
+    }
+    if (activeReviewFilter === 'manager') {
+      return allProbationReviews.filter(r => 
+        r.manager_responses && r.manager_responses.length > 0
+      );
+    }
+    return allProbationReviews; // 'all'
+  };
+
+  const pendingReviews = allProbationReviews.filter(r => r.status === 'PENDING');
+  const completedReviews = allProbationReviews.filter(r => r.status === 'COMPLETED');
+
+  // Enhanced field getters (keep existing)
   const getFieldValue = (field, fallback = 'N/A') => {
     if (!currentEmployee) return fallback;
     
@@ -259,7 +269,6 @@ const EmployeeDetailPageContent = () => {
       'contract_end_date': currentEmployee.contract_end_date,
       'is_visible_in_org_chart': currentEmployee.is_visible_in_org_chart,
       'business_function_name': currentEmployee.business_function_detail?.name,
-      'business_function_code': currentEmployee.business_function_detail?.code,
       'department_name': currentEmployee.department_detail?.name,
       'unit_name': currentEmployee.unit_detail?.name,
       'job_function_name': currentEmployee.job_function_detail?.name,
@@ -325,7 +334,6 @@ const EmployeeDetailPageContent = () => {
     }
   };
 
-  // 🆕 Get urgency badge color for probation
   const getUrgencyBadgeColor = (urgencyLevel) => {
     const colors = {
       'critical': 'bg-red-100 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-400 dark:border-red-800',
@@ -336,7 +344,6 @@ const EmployeeDetailPageContent = () => {
     return colors[urgencyLevel] || colors.normal;
   };
 
-  // 🆕 Get progress bar color
   const getProgressBarColor = (urgencyLevel) => {
     const colors = {
       'critical': 'bg-red-500',
@@ -347,13 +354,20 @@ const EmployeeDetailPageContent = () => {
     return colors[urgencyLevel] || colors.normal;
   };
 
-  // 🆕 Handle review click with redirect to specific section
-  const handleViewProbationDetails = () => {
-    // Redirect to probation management page with specific section
-    router.push('/hr/contract-probation-management?tab=reviews&highlight=' + id);
+  // 🆕 Get review type badge
+  const getReviewTypeBadge = (reviewType) => {
+    const badges = {
+      'EMPLOYEE_30': { color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400', label: 'Employee 30' },
+      'MANAGER_30': { color: 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400', label: 'Manager 30' },
+      'EMPLOYEE_60': { color: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400', label: 'Employee 60' },
+      'MANAGER_60': { color: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400', label: 'Manager 60' },
+      'EMPLOYEE_90': { color: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400', label: 'Employee 90' },
+      'MANAGER_90': { color: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400', label: 'Manager 90' },
+    };
+    return badges[reviewType] || { color: 'bg-gray-100 text-gray-700', label: reviewType };
   };
 
-  // Enhanced Info Item Component
+  // Enhanced Info Item Component (keep existing)
   const InfoItem = ({ icon, label, value, isLink, linkPath }) => (
     <div className={`group flex items-start py-2 px-1 rounded-lg transition-all duration-200 hover:bg-gray-50 dark:hover:bg-gray-700/30`}>
       <div className={`flex-shrink-0 w-7 h-7 rounded-xl flex items-center justify-center mr-3 transition-all duration-200 bg-almet-sapphire/10 dark:bg-almet-sapphire/20 group-hover:bg-almet-sapphire/20`}>
@@ -378,7 +392,7 @@ const EmployeeDetailPageContent = () => {
     </div>
   );
 
-  // Collapsible Section Component
+  // Collapsible Section Component (keep existing)
   const CollapsibleSection = ({ title, icon, children, sectionKey, defaultExpanded = true }) => {
     const isExpanded = sectionsExpanded[sectionKey] ?? defaultExpanded;
     
@@ -429,7 +443,7 @@ const EmployeeDetailPageContent = () => {
     </button>
   );
 
-  // Loading state
+  // Loading & Error states (keep existing)
   if (loading.employee) {
     return (
       <div className={`min-h-screen ${bgPrimary}`}>
@@ -440,34 +454,23 @@ const EmployeeDetailPageContent = () => {
               <div className="absolute inset-0 w-16 h-16 border-4 border-almet-sapphire/20 rounded-full"></div>
             </div>
             <p className={`${textPrimary} text-lg font-medium mt-4`}>Loading employee details...</p>
-            <p className={`${textMuted} text-sm mt-2`}>Please wait while we fetch the information</p>
           </div>
         </div>
       </div>
     );
   }
 
-  // Error state
   if (error.employee || !currentEmployee) {
     return (
       <div className={`min-h-screen ${bgPrimary}`}>
         <div className="container mx-auto px-4 py-8">
           <div className={`${bgCard} rounded-xl border border-red-300 dark:border-red-700 p-8 ${shadowClass}`}>
             <div className="flex items-start">
-              <div className="flex-shrink-0">
-                <AlertCircle className="h-8 w-8 text-red-500" />
-              </div>
+              <AlertCircle className="h-8 w-8 text-red-500" />
               <div className="ml-4">
-                <h3 className="text-lg font-bold text-red-800 dark:text-red-300 mb-2">
-                  Error Loading Employee
-                </h3>
-                <p className="text-sm text-red-700 dark:text-red-400 mb-4">
-                  {error.employee || "Employee not found"}
-                </p>
-                <Link
-                  href="/structure/headcount-table"
-                  className="inline-flex items-center px-6 py-3 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded-xl hover:bg-red-200 dark:hover:bg-red-800 transition-all duration-200 font-semibold text-sm"
-                >
+                <h3 className="text-lg font-bold text-red-800 dark:text-red-300 mb-2">Error Loading Employee</h3>
+                <p className="text-sm text-red-700 dark:text-red-400 mb-4">{error.employee || "Employee not found"}</p>
+                <Link href="/structure/headcount-table" className="inline-flex items-center px-6 py-3 bg-red-100 dark:bg-red-900 text-red-700 dark:text-red-300 rounded-xl hover:bg-red-200 transition-all duration-200 font-semibold text-sm">
                   <ChevronLeft className="h-5 w-5 mr-2" />
                   Return to Headcount Table
                 </Link>
@@ -482,14 +485,11 @@ const EmployeeDetailPageContent = () => {
   return (
     <div className={`min-h-screen ${bgPrimary}`}>
       <div className="container mx-auto px-3 py-4">
-        {/* Enhanced Header */}
+        {/* Header */}
         <div className="mb-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-3">
-              <Link
-                href="/structure/headcount-table"
-                className={`inline-flex items-center px-3 py-2 ${btnSecondary} rounded-lg transition-all duration-200 text-xs font-medium`}
-              >
+              <Link href="/structure/headcount-table" className={`inline-flex items-center px-3 py-2 ${btnSecondary} rounded-lg transition-all duration-200 text-xs font-medium`}>
                 <ChevronLeft size={16} className="mr-1" />
                 <span>Back</span>
               </Link>
@@ -502,7 +502,8 @@ const EmployeeDetailPageContent = () => {
               </div>
             </div>
 
-       
+            {/* Quick Actions */}
+            {isOwnProfile && (
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowResignationModal(true)}
@@ -519,11 +520,11 @@ const EmployeeDetailPageContent = () => {
                   </span>
                 )}
               </div>
-        
+            )}
           </div>
         </div>
 
-        {/* 🆕 Probation Alert Banner */}
+        {/* Probation Alert Banner */}
         {probationInfo && probationInfo.urgencyLevel === 'critical' && (
           <div className="mb-6 bg-red-50 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800 rounded-xl p-4">
             <div className="flex items-start gap-3">
@@ -537,27 +538,23 @@ const EmployeeDetailPageContent = () => {
                 <p className="text-xs text-red-700 dark:text-red-400 mb-3">
                   Your probation period will end in {probationInfo.daysRemaining} days. Please complete your self-assessment reviews.
                 </p>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleViewProbationDetails}
-                    className="px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs font-medium inline-flex items-center gap-2"
-                  >
-                    <Eye size={12} />
-                    View Probation Details
-                  </button>
-                  {pendingProbationReviews.length > 0 && (
-                    <button
-                      onClick={() => {
-                        setSelectedReview(pendingProbationReviews[0]);
-                        setShowProbationModal(true);
-                      }}
-                      className="px-3 py-1.5 bg-white dark:bg-gray-800 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-700 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors text-xs font-medium inline-flex items-center gap-2"
-                    >
-                      <MessageSquare size={12} />
-                      Complete Review ({pendingProbationReviews.length})
-                    </button>
-                  )}
-                </div>
+                {pendingReviews.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    {pendingReviews.map((review) => (
+                      <button
+                        key={review.id}
+                        onClick={() => {
+                          setSelectedReview(review);
+                          setShowProbationModal(true);
+                        }}
+                        className="px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-xs font-medium inline-flex items-center gap-2"
+                      >
+                        <MessageSquare size={12} />
+                        Complete {review.review_period.replace('_', '-')} Review
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -587,7 +584,7 @@ const EmployeeDetailPageContent = () => {
                       currentPhotoUrl={currentProfilePhoto}
                       employeeName={getDisplayName()}
                       onPhotoUpdate={handleProfilePhotoUpdate}
-                      // editable={isOwnProfile}
+                      editable={isOwnProfile}
                       size="lg"
                     />
                   </div>
@@ -616,272 +613,238 @@ const EmployeeDetailPageContent = () => {
                         Grade: {getFieldValue('grading_level')}
                       </div>
                     )}
-                    {getFieldValue('start_date') !== 'N/A' && (
-                      <div className="bg-white/20 backdrop-blur-sm text-white px-2 py-1 rounded-full font-medium">
-                        Since: {formatDate(getFieldValue('start_date'))}
-                      </div>
-                    )}
+                    {getFieldValue('start_date') !== 'N/A' && (<div className="bg-white/20 backdrop-blur-sm text-white px-2 py-1 rounded-full font-medium">
+                    Since: {formatDate(getFieldValue('start_date'))}
                   </div>
-                </div>
-              </div>
-
-              {/* 🆕 Probation Progress */}
-              {probationInfo && (
-                <div className="p-3 border-b border-gray-200 dark:border-gray-700">
-                  <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-border-blue-700">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <Clock size={14} className="text-blue-600 dark:text-blue-400" />
-                        <span className="text-xs font-semibold text-blue-800 dark:text-blue-300">
-                          Probation Period
-                        </span>
-                      </div>
-                      <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${getUrgencyBadgeColor(probationInfo.urgencyLevel)}`}>
-                        {probationInfo.daysRemaining}d left
-                      </span>
-                    </div>
-                    
-                    <div className="mb-2">
-                      <div className="flex items-center justify-between text-[9px] text-blue-700 dark:text-blue-400 mb-1">
-                        <span>{probationInfo.daysCompleted} / {probationInfo.totalProbationDays} days</span>
-                        <span className="font-bold">{probationInfo.progressPercent}%</span>
-                      </div>
-                      <div className="w-full bg-blue-200 dark:bg-blue-900/50 rounded-full h-1.5">
-                        <div 
-                          className={`h-1.5 rounded-full transition-all ${getProgressBarColor(probationInfo.urgencyLevel)}`}
-                          style={{ width: `${probationInfo.progressPercent}%` }}
-                        ></div>
-                      </div>
-                    </div>
-
-                    {/* 🆕 Pending Reviews */}
-                    {pendingProbationReviews.length > 0 && (
-                      <div className="mt-2 pt-2 border-t border-blue-200 dark:border-blue-800">
-                        <p className="text-[9px] text-blue-700 dark:text-blue-400 mb-2 font-semibold">
-                          {pendingProbationReviews.length} Pending Review(s)
-                        </p>
-                        <div className="space-y-1">
-                          {pendingProbationReviews.map((review) => (
-                            <button
-                              key={review.id}
-                              onClick={() => {
-                                setSelectedReview(review);
-                                setShowProbationModal(true);
-                              }}
-                              className="w-full px-2 py-1.5 bg-blue-600 text-white rounded text-[9px] font-medium hover:bg-blue-700 transition-colors flex items-center justify-center gap-1"
-                            >
-                              <MessageSquare size={10} />
-                              {review.review_period.replace('_', '-')} Review
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* 🆕 Completed Reviews */}
-                    {completedProbationReviews.length > 0 && (
-                      <div className="mt-2 pt-2 border-t border-blue-200 dark:border-blue-800">
-                        <p className="text-[9px] text-blue-700 dark:text-blue-400 mb-1 flex items-center gap-1">
-                          <CheckCircle size={10} />
-                          {completedProbationReviews.length} Completed
-                        </p>
-                      </div>
-                    )}
-
-                    {/* 🆕 View All Button */}
-                    <div className="mt-2 pt-2 border-t border-blue-200 dark:border-blue-800">
-                      <button
-                        onClick={handleViewProbationDetails}
-                        className="w-full px-2 py-1.5 bg-white dark:bg-gray-800 text-blue-600 dark:text-blue-400 border border-blue-300 dark:border-blue-700 rounded text-[9px] font-medium hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors flex items-center justify-center gap-1"
-                      >
-                        <Eye size={10} />
-                        View All Details
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className={`p-3 border-b ${borderColor}`}>
-                <div className="grid grid-cols-1 gap-2">
-                  {/* {!isOwnProfile && ( */}
-                    <button
-                      onClick={handleEditEmployee}
-                      className={`${btnPrimary} px-3 py-2 rounded-md flex items-center justify-center text-[10px] font-semibold`}
-                    >
-                      <Edit size={12} className="mr-1" />
-                      Edit Profile
-                    </button>
-           
-                  
-             
-                    <>
-                      <button
-                        onClick={() => setShowResignationModal(true)}
-                        className="px-3 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-md hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors text-[10px] font-semibold flex items-center justify-center"
-                      >
-                        <LogOut size={12} className="mr-1" />
-                        Submit Resignation
-                      </button>
-                      
-                      <button
-                        onClick={handleViewProbationDetails}
-                        className="px-3 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded-md hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors text-[10px] font-semibold flex items-center justify-center"
-                      >
-                        <Clock size={12} className="mr-1" />
-                        View My Reviews
-                      </button>
-                    </>
-           
-                </div>
-              </div>
-
-              {/* Contact Information */}
-              <div className="p-3 space-y-3">
-                <CollapsibleSection
-                  title="Contact Information"
-                  icon={<Mail size={14} className="text-almet-sapphire" />}
-                  sectionKey="contact"
-                >
-                  <div className="space-y-1">
-                    <InfoItem 
-                      icon={<Mail size={12} className="text-almet-sapphire" />}
-                      label="Email"
-                      value={getEmail()}
-                      isLink={true}
-                      linkPath={`mailto:${getEmail()}`}
-                    />
-                    <InfoItem 
-                      icon={<Phone size={12} className="text-almet-sapphire" />}
-                      label="Phone"
-                      value={getFieldValue('phone')}
-                      isLink={getFieldValue('phone') !== 'N/A'}
-                      linkPath={`tel:${getFieldValue('phone')}`}
-                    />
-                    <InfoItem 
-                      icon={<Calendar size={12} className="text-almet-sapphire" />}
-                      label="Birth Date"
-                      value={formatDate(getFieldValue('date_of_birth'))}
-                    />
-                    <InfoItem 
-                      icon={<MapPin size={12} className="text-almet-sapphire" />}
-                      label="Address"
-                      value={getFieldValue('address')}
-                    />
-                  </div>
-                </CollapsibleSection>
+                )}
               </div>
             </div>
           </div>
 
-          {/* Main Content */}
-          <div className={`${sidebarCollapsed ? 'lg:col-span-12' : 'lg:col-span-8 xl:col-span-9'} transition-all duration-300`}>
-            
-            {sidebarCollapsed && (
-              <button
-                onClick={() => setSidebarCollapsed(false)}
-                className={`${btnPrimary} p-3 rounded-xl mb-6 shadow-lg hover:shadow-xl transition-all duration-300`}
-              >
-                <Maximize2 size={18} />
-              </button>
-            )}
-
-            {/* Tab Navigation */}
-            <div className={`${bgCard} rounded-2xl ${shadowClass} border ${borderColor} mb-6 overflow-hidden`}>
-              <div className="p-4">
-                <div className="flex flex-wrap gap-2">
-                  {[
-                    { id: 'overview', label: 'Overview', icon: <User size={16} /> },
-                    { id: 'job', label: 'Job Details', icon: <Briefcase size={16} /> },
-                    { 
-                      id: 'job-descriptions', 
-                      label: 'Job Descriptions', 
-                      icon: <ClipboardList size={16} />
-                    },
-                    { 
-                      id: 'performance', 
-                      label: 'Performance', 
-                      icon: <TrendingUp size={16} />,
-                      badge: currentEmployee?.pending_performance_actions?.has_pending_actions ? 
-                        currentEmployee.pending_performance_actions.actions.length : null
-                    },
-                    { 
-                      id: 'assets', 
-                      label: 'Assets', 
-                      icon: <Package size={16} />
-                    },
-                    { id: 'documents', label: 'Documents', icon: <FileText size={16} /> },
-                    { id: 'activity', label: 'Activity', icon: <Activity size={16} /> }
-                  ].map((tab) => (
-                    <TabButton
-                      key={tab.id}
-                      id={tab.id}
-                      label={tab.label}
-                      icon={tab.icon}
-                      isActive={activeTab === tab.id}
-                      onClick={setActiveTab}
-                      badge={tab.badge}
-                    />
-                  ))}
+          {/* Probation Progress */}
+          {probationInfo && (
+            <div className="p-3 border-b border-gray-200 dark:border-gray-700">
+              <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3 border border-blue-200 dark:border-blue-700">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Clock size={14} className="text-blue-600 dark:text-blue-400" />
+                    <span className="text-xs font-semibold text-blue-800 dark:text-blue-300">
+                      Probation Period
+                    </span>
+                  </div>
+                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold border ${getUrgencyBadgeColor(probationInfo.urgencyLevel)}`}>
+                    {probationInfo.daysRemaining}d left
+                  </span>
                 </div>
-              </div>
+                
+                <div className="mb-2">
+                  <div className="flex items-center justify-between text-[9px] text-blue-700 dark:text-blue-400 mb-1">
+                    <span>{probationInfo.daysCompleted} / {probationInfo.totalProbationDays} days</span>
+                    <span className="font-bold">{probationInfo.progressPercent}%</span>
+                  </div>
+                  <div className="w-full bg-blue-200 dark:bg-blue-900/50 rounded-full h-1.5">
+                    <div 
+                      className={`h-1.5 rounded-full transition-all ${getProgressBarColor(probationInfo.urgencyLevel)}`}
+                      style={{ width: `${probationInfo.progressPercent}%` }}
+                    ></div>
+                  </div>
+                </div>
 
-              {/* Tab Content */}
-              <div className="border-t border-gray-200 dark:border-gray-700">
-                <div className="p-6">
-                  {activeTab === 'overview' && (
-                    <div className="space-y-6">
-                      <div className="flex items-center justify-between mb-6">
-                        <h3 className={`${textPrimary} text-lg font-bold`}>Personal Overview</h3>
-                        <div className="flex items-center gap-2">
-                          <div className={`px-3 py-1 rounded-full text-[10px] font-medium ${
-                            getFieldValue('is_visible_in_org_chart', false)
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-                              : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
-                          }`}>
-                            {getFieldValue('is_visible_in_org_chart', false) ? (
-                              <>
-                                <Eye className="inline w-3 h-3 mr-1" />
-                                Visible in Org Chart
-                              </>
-                            ) : (
-                              <>
-                                <EyeOff className="inline w-3 h-3 mr-1" />
-                                Hidden from Org Chart
-                              </>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-                        {[
-                          { label: 'Full Name', value: getDisplayName(), icon: <User size={14} /> },
-                          { label: 'Date of Birth', value: formatDate(getFieldValue('date_of_birth')), icon: <Calendar size={14} /> },
-                          { label: 'Gender', value: getFieldValue('gender'), icon: <User size={14} /> },
-                          { label: 'Email Address', value: getEmail(), icon: <Mail size={14} /> },
-                          { label: 'Phone Number', value: getFieldValue('phone'), icon: <Phone size={14} /> },
-                          { label: 'Primary Address', value: getFieldValue('address'), icon: <MapPin size={14} /> },
-                          { label: 'Emergency Contact', value: getFieldValue('emergency_contact'), icon: <AlertTriangle size={14} /> }
-                        ].map((item, index) => (
-                          <div key={index} className={`${bgAccent} rounded-xl p-4 border ${borderColor} hover:shadow-md transition-all duration-200 group`}>
-                            <div className="flex items-center mb-3">
-                              <div className="p-1.5 bg-almet-sapphire/10 rounded-lg mr-3 group-hover:bg-almet-sapphire/20 transition-colors">
-                                {item.icon}
-                              </div>
-                              <span className={`${textMuted} text-xs font-semibold uppercase tracking-wide`}>{item.label}</span>
-                            </div>
-                            <p className={`${textPrimary} font-semibold text-xs ${item.value === 'N/A' ? 'text-gray-400 italic text-xs' : ''}`}>
-                              {item.value}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
+                {/* Reviews Summary */}
+                <div className="mt-2 pt-2 border-t border-blue-200 dark:border-blue-800 flex items-center justify-between text-[9px]">
+                  <div className="flex items-center gap-1 text-blue-700 dark:text-blue-400">
+                    <CheckCircle size={10} />
+                    <span>{completedReviews.length} Completed</span>
+                  </div>
+                  {pendingReviews.length > 0 && (
+                    <div className="flex items-center gap-1 text-amber-700 dark:text-amber-400">
+                      <AlertCircle size={10} />
+                      <span>{pendingReviews.length} Pending</span>
                     </div>
                   )}
+                </div>
+              </div>
+            </div>
+          )}
 
-                  {activeTab === 'job' && (
+          {/* Action Buttons */}
+          <div className={`p-3 border-b ${borderColor}`}>
+            <div className="grid grid-cols-1 gap-2">
+              {!isOwnProfile && (
+                <button
+                  onClick={handleEditEmployee}
+                  className={`${btnPrimary} px-3 py-2 rounded-md flex items-center justify-center text-[10px] font-semibold`}
+                >
+                  <Edit size={12} className="mr-1" />
+                  Edit Profile
+                </button>
+              )}
+              
+              {isOwnProfile && (
+                <button
+                  onClick={() => setShowResignationModal(true)}
+                  className="px-3 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-md hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors text-[10px] font-semibold flex items-center justify-center"
+                >
+                  <LogOut size={12} className="mr-1" />
+                  Submit Resignation
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Contact Information */}
+          <div className="p-3 space-y-3">
+            <CollapsibleSection
+              title="Contact Information"
+              icon={<Mail size={14} className="text-almet-sapphire" />}
+              sectionKey="contact"
+            >
+              <div className="space-y-1">
+                <InfoItem 
+                  icon={<Mail size={12} className="text-almet-sapphire" />}
+                  label="Email"
+                  value={getEmail()}
+                  isLink={true}
+                  linkPath={`mailto:${getEmail()}`}
+                />
+                <InfoItem 
+                  icon={<Phone size={12} className="text-almet-sapphire" />}
+                  label="Phone"
+                  value={getFieldValue('phone')}
+                  isLink={getFieldValue('phone') !== 'N/A'}
+                  linkPath={`tel:${getFieldValue('phone')}`}
+                />
+                <InfoItem 
+                  icon={<Calendar size={12} className="text-almet-sapphire" />}
+                  label="Birth Date"
+                  value={formatDate(getFieldValue('date_of_birth'))}
+                />
+                <InfoItem 
+                  icon={<MapPin size={12} className="text-almet-sapphire" />}
+                  label="Address"
+                  value={getFieldValue('address')}
+                />
+              </div>
+            </CollapsibleSection>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Content */}
+      <div className={`${sidebarCollapsed ? 'lg:col-span-12' : 'lg:col-span-8 xl:col-span-9'} transition-all duration-300`}>
+        
+        {sidebarCollapsed && (
+          <button
+            onClick={() => setSidebarCollapsed(false)}
+            className={`${btnPrimary} p-3 rounded-xl mb-6 shadow-lg hover:shadow-xl transition-all duration-300`}
+          >
+            <Maximize2 size={18} />
+          </button>
+        )}
+
+        {/* Tab Navigation */}
+        <div className={`${bgCard} rounded-2xl ${shadowClass} border ${borderColor} mb-6 overflow-hidden`}>
+          <div className="p-4">
+            <div className="flex flex-wrap gap-2">
+              {[
+                { id: 'overview', label: 'Overview', icon: <User size={16} /> },
+                { id: 'job', label: 'Job Details', icon: <Briefcase size={16} /> },
+                { 
+                  id: 'job-descriptions', 
+                  label: 'Job Descriptions', 
+                  icon: <ClipboardList size={16} />
+                },
+                { 
+                  id: 'performance', 
+                  label: 'Performance', 
+                  icon: <TrendingUp size={16} />,
+                  badge: currentEmployee?.pending_performance_actions?.has_pending_actions ? 
+                    currentEmployee.pending_performance_actions.actions.length : null
+                },
+                // 🆕 Probation Reviews Tab - YALNIZ OWN PROFILE və REVIEWS VARSA
+      ...(isOwnProfile && allProbationReviews.length > 0 ? [{
+        id: 'probation-reviews',
+        label: 'Probation Reviews',
+        icon: <MessageSquare size={16} />,
+        badge: pendingReviews.length > 0 ? pendingReviews.length : null
+      }] : []),
+                { 
+                  id: 'assets', 
+                  label: 'Assets', 
+                  icon: <Package size={16} />
+                },
+                { id: 'documents', label: 'Documents', icon: <FileText size={16} /> },
+                { id: 'activity', label: 'Activity', icon: <Activity size={16} /> }
+              ].map((tab) => (
+                <TabButton
+                  key={tab.id}
+                  id={tab.id}
+                  label={tab.label}
+                  icon={tab.icon}
+                  isActive={activeTab === tab.id}
+                  onClick={setActiveTab}
+                  badge={tab.badge}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* Tab Content */}
+          <div className="border-t border-gray-200 dark:border-gray-700">
+            <div className="p-6">
+              {/* Overview Tab */}
+              {activeTab === 'overview' && (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h3 className={`${textPrimary} text-lg font-bold`}>Personal Overview</h3>
+                    <div className="flex items-center gap-2">
+                      <div className={`px-3 py-1 rounded-full text-[10px] font-medium ${
+                        getFieldValue('is_visible_in_org_chart', false)
+                          ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+                          : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
+                      }`}>
+                        {getFieldValue('is_visible_in_org_chart', false) ? (
+                          <>
+                            <Eye className="inline w-3 h-3 mr-1" />
+                            Visible in Org Chart
+                          </>
+                        ) : (
+                          <>
+                            <EyeOff className="inline w-3 h-3 mr-1" />
+                            Hidden from Org Chart
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+                    {[
+                      { label: 'Full Name', value: getDisplayName(), icon: <User size={14} /> },
+                      { label: 'Date of Birth', value: formatDate(getFieldValue('date_of_birth')), icon: <Calendar size={14} /> },
+                      { label: 'Gender', value: getFieldValue('gender'), icon: <User size={14} /> },
+                      { label: 'Email Address', value: getEmail(), icon: <Mail size={14} /> },
+                      { label: 'Phone Number', value: getFieldValue('phone'), icon: <Phone size={14} /> },
+                      { label: 'Primary Address', value: getFieldValue('address'), icon: <MapPin size={14} /> },
+                      { label: 'Emergency Contact', value: getFieldValue('emergency_contact'), icon: <AlertTriangle size={14} /> }
+                    ].map((item, index) => (
+                      <div key={index} className={`${bgAccent} rounded-xl p-4 border ${borderColor} hover:shadow-md transition-all duration-200 group`}>
+                        <div className="flex items-center mb-3">
+                          <div className="p-1.5 bg-almet-sapphire/10 rounded-lg mr-3 group-hover:bg-almet-sapphire/20 transition-colors">
+                            {item.icon}
+                          </div>
+                          <span className={`${textMuted} text-xs font-semibold uppercase tracking-wide`}>{item.label}</span>
+                        </div>
+                        <p className={`${textPrimary} font-semibold text-xs ${item.value === 'N/A' ? 'text-gray-400 italic text-xs' : ''}`}>
+                          {item.value}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+                 {activeTab === 'job' && (
                     <div className="space-y-4">
                       <div className="flex items-center justify-between">
                         <h3 className={`${textPrimary} text-sm font-bold`}>Job Information</h3>
@@ -1045,133 +1008,349 @@ const EmployeeDetailPageContent = () => {
                     </div>
                   )}
 
-                  {activeTab === 'job-descriptions' && (
-                    <div className="space-y-6">
-                      <EmployeeDetailJobDescriptions 
-                        employeeId={id} 
-                        isManager={isManager}
-                      />
-                    </div>
-                  )}
+              {/* Job Descriptions Tab */}
+              {activeTab === 'job-descriptions' && (
+                <div className="space-y-6">
+                  <EmployeeDetailJobDescriptions 
+                    employeeId={id} 
+                    isManager={isManager}
+                  />
+                </div>
+              )}
 
-                  {activeTab === 'performance' && (
-                    <div className="space-y-6">
+              {/* Performance Tab */}
+              {activeTab === 'performance' && (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className={`${textPrimary} text-lg font-bold`}>Performance Management</h3>
+                    <div className={`px-4 py-2 rounded-xl ${bgAccent} border ${borderColor} flex items-center gap-2`}>
+                      <TrendingUp size={16} className="text-almet-sapphire" />
+                      <span className={`text-xs font-semibold ${textMuted}`}>
+                        Annual Review & Goals
+                      </span>
+                    </div>
+                  </div>
+                  <EmployeeDetailPerformance 
+                    employeeId={id} 
+                    employeeData={currentEmployee}
+                    isManager={isManager}
+                  />
+                </div>
+              )}
+
+              {/* 🆕🆕🆕 PROBATION REVIEWS TAB */}
+              {activeTab === 'probation-reviews' && (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className={`${textPrimary} text-lg font-bold`}>Probation Reviews</h3>
+                    <div className={`px-4 py-2 rounded-xl ${bgAccent} border ${borderColor} flex items-center gap-2`}>
+                      <MessageSquare size={16} className="text-almet-sapphire" />
+                      <span className={`text-xs font-semibold ${textMuted}`}>
+                        {allProbationReviews.length} Total Reviews
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Stats Cards */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className={`${bgCard} rounded-lg border ${borderColor} p-4`}>
                       <div className="flex items-center justify-between">
-                        <h3 className={`${textPrimary} text-lg font-bold`}>Performance Management</h3>
-                        <div className={`px-4 py-2 rounded-xl ${bgAccent} border ${borderColor} flex items-center gap-2`}>
-                          <TrendingUp size={16} className="text-almet-sapphire" />
-                          <span className={`text-xs font-semibold ${textMuted}`}>
-                            Annual Review & Goals
-                          </span>
+                        <div>
+                          <p className={`text-xs ${textMuted} mb-1`}>Total Reviews</p>
+                          <p className={`text-2xl font-bold ${textPrimary}`}>{allProbationReviews.length}</p>
+                        </div>
+                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                          <MessageSquare size={20} className="text-blue-600 dark:text-blue-400" />
                         </div>
                       </div>
-                      <EmployeeDetailPerformance 
-                        employeeId={id} 
-                        employeeData={currentEmployee}
-                        isManager={isManager}
-                      />
                     </div>
-                  )}
 
-                  {activeTab === 'assets' && (
-                    <div className="space-y-6">
+                    <div className={`${bgCard} rounded-lg border ${borderColor} p-4`}>
                       <div className="flex items-center justify-between">
-                        <h3 className={`${textPrimary} text-lg font-bold`}>Asset Management</h3>
-                        <div className={`px-4 py-2 rounded-xl ${bgAccent} border ${borderColor} flex items-center gap-2`}>
-                          <Package size={16} className="text-almet-sapphire" />
-                          <span className={`text-xs font-semibold ${textMuted}`}>
-                            Assigned Assets
-                          </span>
+                        <div>
+                          <p className={`text-xs ${textMuted} mb-1`}>Pending</p>
+                          <p className={`text-2xl font-bold text-amber-600 dark:text-amber-400`}>{pendingReviews.length}</p>
+                        </div>
+                        <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+                          <Clock size={20} className="text-amber-600 dark:text-amber-400" />
                         </div>
                       </div>
-                      <EmployeeAssetManagement 
-                        employeeId={id} 
-                        employeeData={currentEmployee}
-                        darkMode={darkMode}
-                      />
                     </div>
-                  )}
 
-                  {activeTab === 'documents' && (
-                    <div className="space-y-6">
-                      <EmployeeDocumentManager 
-                        employeeId={id} 
-                        employeeData={currentEmployee}
-                        darkMode={darkMode}
-                      />
-                    </div>
-                  )}
-
-                  {/* ✅ Activity Tab - RESTORED */}
-                  {activeTab === 'activity' && (
-                    <div className="space-y-6">
+                    <div className={`${bgCard} rounded-lg border ${borderColor} p-4`}>
                       <div className="flex items-center justify-between">
-                        <h3 className={`${textPrimary} text-lg font-bold`}>Recent Activity</h3>
-                        <div className={`px-4 py-2 rounded-xl ${bgAccent} border ${borderColor} flex items-center gap-2`}>
-                          <Activity size={16} className="text-almet-sapphire" />
-                          <span className={`text-xs font-semibold ${textMuted}`}>
-                            Activity Timeline
-                          </span>
+                        <div>
+                          <p className={`text-xs ${textMuted} mb-1`}>Completed</p>
+                          <p className={`text-2xl font-bold text-green-600 dark:text-green-400`}>{completedReviews.length}</p>
+                        </div>
+                        <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                          <CheckCircle size={20} className="text-green-600 dark:text-green-400" />
                         </div>
                       </div>
-                      
-                      {currentEmployee.activities && currentEmployee.activities.length > 0 ? (
-                        <div className="space-y-4">
-                          {currentEmployee.activities.map((activity, index) => (
-                            <div key={activity.id} className={`${bgCard} rounded-xl border ${borderColor} p-6 ${shadowClass} hover:shadow-lg transition-all duration-300`}>
-                              <div className="flex items-start gap-4">
-                                <div className="p-3 bg-almet-sapphire rounded-xl text-white flex-shrink-0">
-                                  <Activity size={16} />
+                    </div>
+                  </div>
+
+                  {/* Filter Buttons */}
+                  <div className={`${bgCard} rounded-lg border ${borderColor} p-3`}>
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => setActiveReviewFilter('all')}
+                        className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors ${
+                          activeReviewFilter === 'all'
+                            ? 'bg-almet-sapphire text-white'
+                            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        }`}
+                      >
+                        All Reviews ({allProbationReviews.length})
+                      </button>
+                      <button
+                        onClick={() => setActiveReviewFilter('employee')}
+                        className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors ${
+                          activeReviewFilter === 'employee'
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        }`}
+                      >
+                        My Self-Assessments
+                      </button>
+                      <button
+                        onClick={() => setActiveReviewFilter('manager')}
+                        className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors ${
+                          activeReviewFilter === 'manager'
+                            ? 'bg-purple-600 text-white'
+                            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                        }`}
+                      >
+                        Manager Reviews
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Reviews List */}
+                  <div className="space-y-3">
+                    {getFilteredReviews().length === 0 ? (
+                      <div className={`${bgCard} rounded-lg border ${borderColor} p-12 text-center`}>
+                        <MessageSquare size={48} className={`mx-auto ${textMuted} mb-3`} />
+                        <h4 className={`text-lg font-bold ${textPrimary} mb-2`}>No Reviews Found</h4>
+                        <p className={`text-sm ${textMuted}`}>
+                          {activeReviewFilter === 'all' 
+                            ? 'No probation reviews available yet'
+                            : activeReviewFilter === 'employee'
+                            ? 'You haven\'t completed any self-assessments yet'
+                            : 'No manager reviews completed yet'}
+                        </p>
+                      </div>
+                    ) : (
+                      getFilteredReviews().map((review) => {
+                        const badge = getReviewTypeBadge(review.review_period);
+                        const isPending = review.status === 'PENDING';
+                        const hasEmployeeResponse = review.employee_responses && review.employee_responses.length > 0;
+                        const hasManagerResponse = review.manager_responses && review.manager_responses.length > 0;
+                        
+                        return (
+                          <div
+                            key={review.id}
+                            className={`${bgCard} rounded-lg border-2 ${
+                              isPending ? 'border-amber-200 dark:border-amber-800' : `${borderColor}`
+                            } p-4 hover:shadow-md transition-all`}
+                          >
+                            <div className="flex items-start justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <div className={`p-2 ${isPending ? 'bg-amber-50 dark:bg-amber-900/20' : 'bg-green-50 dark:bg-green-900/20'} rounded-lg`}>
+                                  {isPending ? (
+                                    <Clock size={18} className="text-amber-600 dark:text-amber-400" />
+                                  ) : (
+                                    <CheckCircle size={18} className="text-green-600 dark:text-green-400" />
+                                  )}
                                 </div>
-                                <div className="flex-1">
-                                  <div className="flex items-start justify-between">
-                                    <div>
-                                      <h4 className={`${textPrimary} font-semibold text-sm mb-1`}>
-                                        {activity.activity_type}
-                                      </h4>
-                                      <p className={`${textSecondary} text-xs mb-3 leading-relaxed`}>
-                                        {activity.description}
-                                      </p>
-                                      <div className="flex items-center gap-4 text-xs">
-                                        <span className={`${textMuted} flex items-center gap-1`}>
-                                          <User size={14} />
-                                          {activity.performed_by_name}
-                                        </span>
-                                        <span className={`${textMuted} flex items-center gap-1`}>
-                                          <Clock size={14} />
-                                          {formatDate(activity.created_at)}
-                                        </span>
-                                      </div>
-                                    </div>
-                                    <div className={`text-[10px] ${textMuted} bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full`}>
-                                      #{index + 1}
-                                    </div>
+                                <div>
+                                  <h4 className={`text-sm font-semibold ${textPrimary}`}>
+                                    {review.review_period.replace('_', '-Day')} Review
+                                  </h4>
+                                  <p className={`text-xs ${textMuted} mt-0.5`}>
+                                    Created: {formatDate(review.created_at)}
+                                  </p>
+                                </div>
+                              </div>
+
+                              <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${
+                                isPending 
+                                  ? 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800'
+                                  : 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800'
+                              }`}>
+                                {isPending ? 'Pending' : 'Completed'}
+                              </span>
+                            </div>
+
+                            {/* Response Status */}
+                            <div className="flex items-center gap-4 mb-3 text-xs">
+                              <div className={`flex items-center gap-1 ${hasEmployeeResponse ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`}>
+                                {hasEmployeeResponse ? (
+                                  <CheckCircle size={14} />
+                                ) : (
+                                  <XCircle size={14} />
+                                )}
+                                <span>Employee Self-Assessment</span>
+                              </div>
+                              <div className={`flex items-center gap-1 ${hasManagerResponse ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`}>
+                                {hasManagerResponse ? (
+                                  <CheckCircle size={14} />
+                                ) : (
+                                  <XCircle size={14} />
+                                )}
+                                <span>Manager Review</span>
+                              </div>
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex items-center gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
+                              {isPending && isOwnProfile && !hasEmployeeResponse && (
+                                <button
+                                  onClick={() => {
+                                    setSelectedReview(review);
+                                    setShowProbationModal(true);
+                                  }}
+                                  className="flex-1 px-3 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors text-xs font-medium flex items-center justify-center gap-2"
+                                >
+                                  <MessageSquare size={12} />
+                                  Complete Self-Assessment
+                                </button>
+                              )}
+                              
+                              {hasEmployeeResponse && (
+                                <button
+                                  onClick={() => {
+                                    // TODO: Show completed review modal
+                                    alert('View completed review - coming soon!');
+                                  }}
+                                  className="flex-1 px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-xs font-medium flex items-center justify-center gap-2"
+                                >
+                                  <Eye size={12} />
+                                  View My Assessment
+                                </button>
+                              )}
+
+                              {hasManagerResponse && (
+                                <button
+                                  onClick={() => {
+                                    // TODO: Show manager's review
+                                    alert('View manager review - coming soon!');
+                                  }}
+                                  className="flex-1 px-3 py-2 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors text-xs font-medium flex items-center justify-center gap-2"
+                                >
+                                  <Eye size={12} />
+                                  View Manager's Review
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Assets Tab */}
+              {activeTab === 'assets' && (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className={`${textPrimary} text-lg font-bold`}>Asset Management</h3>
+                    <div className={`px-4 py-2 rounded-xl ${bgAccent} border ${borderColor} flex items-center gap-2`}>
+                      <Package size={16} className="text-almet-sapphire" />
+                      <span className={`text-xs font-semibold ${textMuted}`}>
+                        Assigned Assets
+                      </span>
+                    </div>
+                  </div>
+                  <EmployeeAssetManagement 
+                    employeeId={id} 
+                    employeeData={currentEmployee}
+                    darkMode={darkMode}
+                  />
+                </div>
+              )}
+
+              {/* Documents Tab */}
+              {activeTab === 'documents' && (
+                <div className="space-y-6">
+                  <EmployeeDocumentManager 
+                    employeeId={id} 
+                    employeeData={currentEmployee}
+                    darkMode={darkMode}
+                  />
+                </div>
+              )}
+
+              {/* Activity Tab */}
+              {activeTab === 'activity' && (
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between">
+                    <h3 className={`${textPrimary} text-lg font-bold`}>Recent Activity</h3>
+                    <div className={`px-4 py-2 rounded-xl ${bgAccent} border ${borderColor} flex items-center gap-2`}>
+                      <Activity size={16} className="text-almet-sapphire" />
+                      <span className={`text-xs font-semibold ${textMuted}`}>
+                        Activity Timeline
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {currentEmployee.activities && currentEmployee.activities.length > 0 ? (
+                    <div className="space-y-4">
+                      {currentEmployee.activities.map((activity, index) => (
+                        <div key={activity.id} className={`${bgCard} rounded-xl border ${borderColor} p-6 ${shadowClass} hover:shadow-lg transition-all duration-300`}>
+                          <div className="flex items-start gap-4">
+                            <div className="p-3 bg-almet-sapphire rounded-xl text-white flex-shrink-0">
+                              <Activity size={16} />
+                            </div>
+                            <div className="flex-1">
+                              <div className="flex items-start justify-between">
+                                <div>
+                                  <h4 className={`${textPrimary} font-semibold text-sm mb-1`}>
+                                    {activity.activity_type}
+                                  </h4>
+                                  <p className={`${textSecondary} text-xs mb-3 leading-relaxed`}>
+                                    {activity.description}
+                                  </p>
+                                  <div className="flex items-center gap-4 text-xs">
+                                    <span className={`${textMuted} flex items-center gap-1`}>
+                                      <User size={14} />
+                                      {activity.performed_by_name}
+                                    </span>
+                                    <span className={`${textMuted} flex items-center gap-1`}>
+                                      <Clock size={14} />
+                                      {formatDate(activity.created_at)}
+                                    </span>
                                   </div>
+                                </div>
+                                <div className={`text-[10px] ${textMuted} bg-gray-100 dark:bg-gray-800 px-3 py-1 rounded-full`}>
+                                  #{index + 1}
                                 </div>
                               </div>
                             </div>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className={`${bgAccent} rounded-2xl p-12 text-center border ${borderColor}`}>
-                          <div className="w-20 h-20 mx-auto mb-6 bg-gray-200 dark:bg-gray-700 rounded-2xl flex items-center justify-center">
-                            <Activity size={32} className={`${textMuted}`} />
                           </div>
-                          <h4 className={`text-lg font-bold ${textPrimary} mb-2`}>No Recent Activity</h4>
-                          <p className={`${textMuted} text-sm`}>
-                            No activities have been recorded for this employee yet.
-                          </p>
                         </div>
-                      )}
+                      ))}
+                    </div>
+                  ) : (
+                    <div className={`${bgAccent} rounded-2xl p-12 text-center border ${borderColor}`}>
+                      <div className="w-20 h-20 mx-auto mb-6 bg-gray-200 dark:bg-gray-700 rounded-2xl flex items-center justify-center">
+                        <Activity size={32} className={`${textMuted}`} />
+                      </div>
+                      <h4 className={`text-lg font-bold ${textPrimary} mb-2`}>No Recent Activity</h4>
+                      <p className={`${textMuted} text-sm`}>
+                        No activities have been recorded for this employee yet.
+                      </p>
                     </div>
                   )}
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
-
-        {/* Additional Notes Section */}
+      </div>
+    </div>
+{/* Additional Notes Section */}
         {getFieldValue('notes') !== 'N/A' && (
           <div className={`${bgCard} rounded-2xl ${shadowClass} border ${borderColor} p-8 mt-8`}>
             <h3 className={`${textPrimary} text-lg font-bold mb-4 flex items-center gap-3`}>
@@ -1234,7 +1413,8 @@ const EmployeeDetailPageContent = () => {
 </div>
 )}
 {/* Modals */}
-    {showResignationModal  && (
+    {/* Modals */}
+    {showResignationModal && isOwnProfile && (
       <ResignationSubmissionModal
         onClose={() => setShowResignationModal(false)}
         onSuccess={() => {
@@ -1257,8 +1437,7 @@ const EmployeeDetailPageContent = () => {
           setSelectedReview(null);
           loadProbationData();
         }}
-        respondentType="EMPLOYEE"
-      />
+        respondentType="EMPLOYEE"      />
     )}
   </div>
 </div>
