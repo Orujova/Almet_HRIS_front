@@ -182,37 +182,41 @@ export default function PlanningCalendar({
     }
   };
 
-  const handleMouseUp = () => {
+// components/vacation/PlanningCalendar.jsx - CORRECT LOGIC
+
+const handleMouseUp = () => {
   if (isDragging && dragStart && dragEnd) {
     let start = dragStart < dragEnd ? dragStart : dragEnd;
     let end = dragStart < dragEnd ? dragEnd : dragStart;
     
-    // ✅ UK üçün: If selecting Mon-Fri, extend to Sunday
-    if (businessFunctionCode && businessFunctionCode.toUpperCase() === 'UK') {
+    // ✅ AZ üçün: Extend to Sunday if full workweek selected
+    if (!businessFunctionCode || businessFunctionCode.toUpperCase() !== 'UK') {
       const startDay = start.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
       const endDay = end.getDay();
       
-      // Check if user selected weekdays
-      const hasWeekdays = (startDay >= 1 && startDay <= 5) || (endDay >= 1 && endDay <= 5);
-      
-      if (hasWeekdays) {
-        // ✅ Extend end to Sunday if it's not already Sunday
+      // ✅ Check if user selected Monday to Friday
+      if (startDay === 1 && endDay === 5) {
+        // Extend to Sunday
         while (end.getDay() !== 0) { // 0 = Sunday
           const nextDay = new Date(end);
           nextDay.setDate(nextDay.getDate() + 1);
           end = nextDay;
           
-          // Safety: stop after 7 days
-          const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
-          if (daysDiff > 7) break;
+          // Safety: stop after adding 2 days
+          if (end.getDay() === 0) break;
         }
       }
     }
+    // ✅ UK üçün: No extension - keep user selection exactly as-is
     
     const startStr = formatDate(start);
     const endStr = formatDate(end);
     
-    console.log('📅 DEBUG - Selected:', { startStr, endStr, start, end });
+    console.log('📅 DEBUG - Selected:', { 
+      startStr, 
+      endStr,
+      businessFunction: businessFunctionCode 
+    });
     
     onRangeSelect(startStr, endStr);
   }
@@ -221,6 +225,7 @@ export default function PlanningCalendar({
   setDragStart(null);
   setDragEnd(null);
 };
+
   const renderCalendar = () => {
     const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentMonth);
     const days = [];
