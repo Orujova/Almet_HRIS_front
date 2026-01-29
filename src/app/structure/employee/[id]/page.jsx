@@ -502,25 +502,7 @@ const EmployeeDetailPageContent = () => {
               </div>
             </div>
 
-            {/* Quick Actions */}
-            {isOwnProfile && (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setShowResignationModal(true)}
-                  className="px-3 py-2 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-800 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-all text-xs font-medium flex items-center gap-2"
-                >
-                  <LogOut size={14} />
-                  Submit Resignation
-                </button>
-                
-                {probationInfo && (
-                  <span className={`px-3 py-2 rounded-lg text-xs font-semibold border ${getUrgencyBadgeColor(probationInfo.urgencyLevel)} flex items-center gap-2`}>
-                    <Clock size={14} />
-                    Probation: {probationInfo.daysRemaining}d left
-                  </span>
-                )}
-              </div>
-            )}
+           
           </div>
         </div>
 
@@ -762,7 +744,7 @@ const EmployeeDetailPageContent = () => {
                     currentEmployee.pending_performance_actions.actions.length : null
                 },
                 // 🆕 Probation Reviews Tab - YALNIZ OWN PROFILE və REVIEWS VARSA
-      ...(isOwnProfile && allProbationReviews.length > 0 ? [{
+      ...( allProbationReviews.length > 0 ? [{
         id: 'probation-reviews',
         label: 'Probation Reviews',
         icon: <MessageSquare size={16} />,
