@@ -275,9 +275,9 @@ const loadPerformanceData = useCallback(async () => {
 
   // ✅ FIX: Extract data safely
   const currentPerf = employeeData?.current_performance;
-  const perfSummary = employeeData?.performance_summary;
+
   const pendingActions = employeeData?.pending_performance_actions;
-  const teamOverview = employeeData?.team_performance_overview;
+
 
 
 
@@ -296,52 +296,6 @@ const loadPerformanceData = useCallback(async () => {
   return (
     <div className="space-y-4">
      
-
-      {/* Summary Cards */}
-      <Section
-        darkMode={darkMode}
-        title="Overview"
-        icon={<BarChart3 />}
-        expanded={expanded.summary}
-        onToggle={() => toggle('summary')}
-      >
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-          <SummaryCard
-            darkMode={darkMode}
-            icon={<Calendar />}
-            label="Current Year"
-            value={currentPerf?.active_year || new Date().getFullYear()}
-            sublabel={currentPerf?.has_current_performance 
-              ? `Active - ${performanceRecords.length} record(s)` 
-              : 'No active record'}
-            color={currentPerf?.has_current_performance ? 'green' : 'orange'}
-          />
-          <SummaryCard
-            darkMode={darkMode}
-            icon={<FileText />}
-            label="Total Records"
-            value={performanceRecords.length}
-            sublabel={performanceRecords.length > 0 ? 'Performance data available' : 'No data'}
-            color="blue"
-          />
-          <SummaryCard
-            darkMode={darkMode}
-            icon={<Clock />}
-            label="Pending Actions"
-            value={pendingActions?.actions?.length || 0}
-            sublabel={pendingActions?.has_pending_actions ? 'Action required' : 'All clear'}
-            color={pendingActions?.has_pending_actions ? 'orange' : 'green'}
-          />
-          <SummaryCard
-            darkMode={darkMode}
-            icon={<TrendingUp />}
-            label="Current Period"
-            value={getPeriodLabel(currentPerf?.current_period || 'N/A')}
-            sublabel={`Year ${currentPerf?.active_year || new Date().getFullYear()}`}
-            color="purple"
-          />
-        </div>
-      </Section>
 
       {/* Performance History */}
       <Section

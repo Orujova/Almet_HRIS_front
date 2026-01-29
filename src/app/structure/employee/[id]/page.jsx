@@ -740,8 +740,7 @@ const EmployeeDetailPageContent = () => {
                   id: 'performance', 
                   label: 'Performance', 
                   icon: <TrendingUp size={16} />,
-                  badge: currentEmployee?.pending_performance_actions?.has_pending_actions ? 
-                    currentEmployee.pending_performance_actions.actions.length : null
+                 
                 },
                 // 🆕 Probation Reviews Tab - YALNIZ OWN PROFILE və REVIEWS VARSA
       ...( allProbationReviews.length > 0 ? [{
@@ -1003,15 +1002,7 @@ const EmployeeDetailPageContent = () => {
               {/* Performance Tab */}
               {activeTab === 'performance' && (
                 <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h3 className={`${textPrimary} text-lg font-bold`}>Performance Management</h3>
-                    <div className={`px-4 py-2 rounded-xl ${bgAccent} border ${borderColor} flex items-center gap-2`}>
-                      <TrendingUp size={16} className="text-almet-sapphire" />
-                      <span className={`text-xs font-semibold ${textMuted}`}>
-                        Annual Review & Goals
-                      </span>
-                    </div>
-                  </div>
+               
                   <EmployeeDetailPerformance 
                     employeeId={id} 
                     employeeData={currentEmployee}
@@ -1093,7 +1084,7 @@ const EmployeeDetailPageContent = () => {
                             : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                         }`}
                       >
-                        My Self-Assessments
+                        Onboarding Reviews
                       </button>
                       <button
                         onClick={() => setActiveReviewFilter('manager')}

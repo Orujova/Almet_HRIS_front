@@ -5,7 +5,6 @@ import {
   Calendar, 
   ChevronLeft, 
   ChevronRight, 
-
   Trash2,
   Save,
   AlertCircle,
@@ -175,44 +174,86 @@ export default function PlanningVacationTab({
     setCurrentMonth(new Date());
   };
 
-  const handleRangeSelect = (start, end) => {
-    const isDuplicate = selectedRanges.some(range => 
-      range.start === start && range.end === end
-    );
+const mergeConsecutiveRanges = (ranges) => {
+  if (ranges.length === 0) return [];
+  
+  // Sort by start date
+  const sorted = [...ranges].sort((a, b) => 
+    new Date(a.start) - new Date(b.start)
+  );
+  
+  const merged = [sorted[0]];
+  
+  for (let i = 1; i < sorted.length; i++) {
+    const current = sorted[i];
+    const previous = merged[merged.length - 1];
     
-    if (isDuplicate) {
-      showError('This date range is already selected');
-      return;
+    // Check if consecutive (or overlapping)
+    const prevEnd = new Date(previous.end);
+    const currStart = new Date(current.start);
+    
+    // Calculate difference in days
+    const diffDays = Math.ceil((currStart - prevEnd) / (1000 * 60 * 60 * 24));
+    
+    // ✅ Merge if consecutive or 1 day apart (allows for weekends)
+    if (diffDays <= 1) {
+      // Extend previous range
+      previous.end = current.end;
+      
+      // Keep the same ID (use earliest)
+      previous.id = Math.min(previous.id, current.id);
+    } else {
+      // Add as new range
+      merged.push(current);
     }
-    
-    const hasOverlap = selectedRanges.some(range => {
-      return (start <= range.end && end >= range.start);
-    });
-    
-    if (hasOverlap) {
-      showError('This date range overlaps with an existing selection');
-      return;
-    }
-    
-    // ✅ Check overlap with existing schedules
-    const hasExistingOverlap = existingSchedules.some(schedule => {
-      return (start <= schedule.end && end >= schedule.start);
-    });
-    
-    if (hasExistingOverlap) {
-      showError('⚠️ This date range overlaps with an existing schedule');
-      return;
-    }
-    
-    const newRange = {
-      id: Date.now(),
-      start: start,
-      end: end,
-      vacation_type_id: vacationType
-    };
-    setSelectedRanges([...selectedRanges, newRange]);
-    showSuccess(`✅ Added ${start} to ${end}`);
+  }
+  
+  return merged;
+};
+
+// ✅ Update handleRangeSelect to merge after adding
+const handleRangeSelect = (start, end) => {
+  const isDuplicate = selectedRanges.some(range => 
+    range.start === start && range.end === end
+  );
+  
+  if (isDuplicate) {
+    showError('This date range is already selected');
+    return;
+  }
+  
+  const hasOverlap = selectedRanges.some(range => {
+    return (start <= range.end && end >= range.start);
+  });
+  
+  if (hasOverlap) {
+    showError('This date range overlaps with an existing selection');
+    return;
+  }
+  
+  // ✅ Check overlap with existing schedules
+  const hasExistingOverlap = existingSchedules.some(schedule => {
+    return (start <= schedule.end && end >= schedule.start);
+  });
+  
+  if (hasExistingOverlap) {
+    showError('⚠️ This date range overlaps with an existing schedule');
+    return;
+  }
+  
+  const newRange = {
+    id: Date.now(),
+    start: start,
+    end: end,
+    vacation_type_id: vacationType
   };
+  
+  // ✅ Merge consecutive ranges
+  const updatedRanges = mergeConsecutiveRanges([...selectedRanges, newRange]);
+  
+  setSelectedRanges(updatedRanges);
+  showSuccess(`✅ Added ${start} to ${end}`);
+};
 
   const handleRangeRemove = (dateStr) => {
     const updatedRanges = selectedRanges.filter(range => {
@@ -476,52 +517,63 @@ export default function PlanningVacationTab({
       </div>
 
       {/* Selected Ranges */}
-      {selectedRanges.length > 0 && (
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet shadow-sm">
-          <div className="border-b border-almet-mystic/30 dark:border-almet-comet/30 px-5 py-4 flex items-center justify-between">
-            <h2 className="text-base font-semibold text-almet-cloud-burst dark:text-white">
-              Selected Periods ({selectedRanges.length})
-            </h2>
-            <div className="flex items-center gap-2 text-xs">
-              <Clock className="w-4 h-4 text-almet-sapphire" />
-              <span className="font-semibold text-almet-cloud-burst dark:text-white">
-                Total: {totalDaysPlanned} days
-              </span>
-            </div>
-          </div>
+      {/* Selected Ranges */}
+{selectedRanges.length > 0 && (
+  <div className="bg-white dark:bg-gray-800 rounded-lg border border-almet-mystic/50 dark:border-almet-comet shadow-sm">
+    <div className="border-b border-almet-mystic/30 dark:border-almet-comet/30 px-5 py-4 flex items-center justify-between">
+      <h2 className="text-base font-semibold text-almet-cloud-burst dark:text-white">
+        Selected Periods ({selectedRanges.length})
+      </h2>
+      <div className="flex items-center gap-2 text-xs">
+        <Clock className="w-4 h-4 text-almet-sapphire" />
+        <span className="font-semibold text-almet-cloud-burst dark:text-white">
+          Total: {totalDaysPlanned.toFixed(1)} working days
+        </span>
+      </div>
+    </div>
 
-          <div className="p-5">
-            <div className="space-y-2">
-              {selectedRanges.map((range, index) => (
-                <div 
-                  key={range.id}
-                  className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700/50 rounded-lg"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center justify-center w-8 h-8 bg-blue-600 text-white rounded-full text-xs font-bold">
-                      {index + 1}
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium text-almet-cloud-burst dark:text-white">
-                        {range.start} → {range.end}
-                      </p>
-                      <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                        Paid Vacation
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    onClick={() => handleRemoveRange(range.id)}
-                    className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+    <div className="p-5">
+      <div className="space-y-2">
+        {selectedRanges.map((range, index) => {
+          const days = rangeDays[range.id] || 0;
+          
+          return (
+            <div 
+              key={range.id}
+              className="flex items-center justify-between p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-700/50 rounded-lg"
+            >
+              <div className="flex items-center gap-3 flex-1">
+                <div className="flex items-center justify-center w-8 h-8 bg-blue-600 text-white rounded-full text-xs font-bold">
+                  {index + 1}
                 </div>
-              ))}
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-almet-cloud-burst dark:text-white">
+                      {range.start} → {range.end}
+                    </p>
+                    {/* ✅ WORKING DAYS BADGE */}
+                    <span className="px-2 py-0.5 bg-blue-600 text-white text-xs font-bold rounded">
+                      {days.toFixed(1)} {days === 1 ? 'day' : 'days'}
+                    </span>
+                  </div>
+                  <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">
+                    Paid Vacation
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => handleRemoveRange(range.id)}
+                className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all"
+              >
+                <Trash2 className="w-4 h-4" />
+              </button>
             </div>
-          </div>
-        </div>
-      )}
+          );
+        })}
+      </div>
+    </div>
+  </div>
+)}
 
       {/* Balance Warning */}
       {balances && totalDaysPlanned > availableBalance && (
