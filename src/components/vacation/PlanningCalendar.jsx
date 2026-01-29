@@ -183,50 +183,44 @@ export default function PlanningCalendar({
   };
 
   const handleMouseUp = () => {
-    if (isDragging && dragStart && dragEnd) {
-      let start = dragStart < dragEnd ? dragStart : dragEnd;
-      let end = dragStart < dragEnd ? dragEnd : dragStart;
+  if (isDragging && dragStart && dragEnd) {
+    let start = dragStart < dragEnd ? dragStart : dragEnd;
+    let end = dragStart < dragEnd ? dragEnd : dragStart;
+    
+    // ✅ UK üçün: If selecting Mon-Fri, extend to Sunday
+    if (businessFunctionCode && businessFunctionCode.toUpperCase() === 'UK') {
+      const startDay = start.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+      const endDay = end.getDay();
       
-      // ✅ UK üçün: Extend to include full weeks (Mon-Fri)
-      if (businessFunctionCode && businessFunctionCode.toUpperCase() === 'UK') {
-        // Move start back to Monday if starting mid-week
-        while (start.getDay() !== 1 && start.getDay() !== 0) { // Not Monday and not Sunday
-          const prevDay = new Date(start);
-          prevDay.setDate(prevDay.getDate() - 1);
-          start = prevDay;
-        }
-        
-        // If we hit Sunday, move forward to Monday
-        if (start.getDay() === 0) {
-          start.setDate(start.getDate() + 1);
-        }
-        
-        // Move end forward to Friday if ending mid-week
-        while (end.getDay() !== 5 && end.getDay() !== 6) { // Not Friday and not Saturday
+      // Check if user selected weekdays
+      const hasWeekdays = (startDay >= 1 && startDay <= 5) || (endDay >= 1 && endDay <= 5);
+      
+      if (hasWeekdays) {
+        // ✅ Extend end to Sunday if it's not already Sunday
+        while (end.getDay() !== 0) { // 0 = Sunday
           const nextDay = new Date(end);
           nextDay.setDate(nextDay.getDate() + 1);
           end = nextDay;
-        }
-        
-        // If we hit Saturday, move back to Friday
-        if (end.getDay() === 6) {
-          end.setDate(end.getDate() - 1);
+          
+          // Safety: stop after 7 days
+          const daysDiff = Math.ceil((end - start) / (1000 * 60 * 60 * 24));
+          if (daysDiff > 7) break;
         }
       }
-      
-      const startStr = formatDate(start);
-      const endStr = formatDate(end);
-      
-      console.log('📅 DEBUG - Selected:', { startStr, endStr, start, end });
-      
-      onRangeSelect(startStr, endStr);
     }
     
-    setIsDragging(false);
-    setDragStart(null);
-    setDragEnd(null);
-  };
-
+    const startStr = formatDate(start);
+    const endStr = formatDate(end);
+    
+    console.log('📅 DEBUG - Selected:', { startStr, endStr, start, end });
+    
+    onRangeSelect(startStr, endStr);
+  }
+  
+  setIsDragging(false);
+  setDragStart(null);
+  setDragEnd(null);
+};
   const renderCalendar = () => {
     const { daysInMonth, startingDayOfWeek } = getDaysInMonth(currentMonth);
     const days = [];
