@@ -1,4 +1,4 @@
-// Updated app/(dashboard)/resignation-exit/page.jsx
+// app/(dashboard)/resignation-exit/page.jsx
 'use client';
 import React, { useState, useEffect } from 'react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -10,6 +10,7 @@ import {
 import resignationExitService from '@/services/resignationExitService';
 import ConfirmationModal from '@/components/common/ConfirmationModal';
 import { LoadingSpinner } from '@/components/common/LoadingSpinner';
+import { useToast } from '@/components/common/Toast';
 
 // Modal Imports
 import ResignationSubmissionModal from '@/components/resignation/ResignationSubmissionModal';
@@ -22,6 +23,7 @@ export default function ResignationExitManagement() {
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState(null);
   const [userRole, setUserRole] = useState('employee');
+  const { showSuccess, showError, showInfo } = useToast();
   
   const [currentView, setCurrentView] = useState('home');
   const [selectedItem, setSelectedItem] = useState(null);
@@ -65,6 +67,7 @@ export default function ResignationExitManagement() {
 
     } catch (error) {
       console.error('Error loading data:', error);
+      showError('Failed to load data. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -83,6 +86,7 @@ export default function ResignationExitManagement() {
       });
     } catch (error) {
       console.error('Error loading data:', error);
+      showError('Failed to load data.');
     }
   };
 
@@ -92,16 +96,18 @@ export default function ResignationExitManagement() {
       switch (type) {
         case 'resignation':
           await resignationExitService.resignation.deleteResignation(item.id);
+          showSuccess('Resignation deleted successfully');
           break;
         case 'exit':
           await resignationExitService.exitInterview.deleteExitInterview(item.id);
+          showSuccess('Exit interview deleted successfully');
           break;
       }
       await loadDataForRole(userRole);
       setDeleteModal({ show: false, item: null, type: '' });
     } catch (error) {
       console.error('Error deleting:', error);
-      alert('Failed to delete. Please try again.');
+      showError('Failed to delete. Please try again.');
     }
   };
 
@@ -134,17 +140,17 @@ export default function ResignationExitManagement() {
   };
 
   const Breadcrumb = ({ path }) => (
-    <div className="flex items-center gap-2 text-sm mb-4">
+    <div className="flex items-center gap-2 text-xs mb-3">
       <button 
         onClick={navigateToHome}
         className="flex items-center gap-1 text-gray-600 dark:text-gray-400 hover:text-almet-sapphire transition-colors"
       >
-        <Home size={16} />
+        <Home size={14} />
         <span>Home</span>
       </button>
       {path.map((item, idx) => (
         <React.Fragment key={idx}>
-          <ChevronRight size={14} className="text-gray-400" />
+          <ChevronRight size={12} className="text-gray-400" />
           <span className={idx === path.length - 1 ? "text-gray-900 dark:text-white font-medium" : "text-gray-600 dark:text-gray-400"}>
             {item}
           </span>
@@ -154,7 +160,7 @@ export default function ResignationExitManagement() {
   );
 
   const StatusBadge = ({ status }) => (
-    <span className={`px-2 py-1 rounded-full text-xs font-medium border ${resignationExitService.helpers.getStatusColor(status)}`}>
+    <span className={`px-2 py-0.5 rounded-full text-[10px] font-medium border ${resignationExitService.helpers.getStatusColor(status)}`}>
       {resignationExitService.helpers.getStatusText(status)}
     </span>
   );
@@ -162,23 +168,23 @@ export default function ResignationExitManagement() {
   const ActionCard = ({ icon: Icon, title, description, count, color, onClick }) => (
     <button
       onClick={onClick}
-      className="bg-white dark:bg-gray-800 rounded-lg p-6 border-2 border-gray-200 dark:border-gray-700 hover:border-almet-sapphire dark:hover:border-almet-sapphire hover:shadow-lg transition-all text-left group"
+      className="bg-white dark:bg-gray-800 rounded-lg p-4 border-2 border-gray-200 dark:border-gray-700 hover:border-almet-sapphire dark:hover:border-almet-sapphire hover:shadow-lg transition-all text-left group"
     >
-      <div className="flex items-start justify-between mb-4">
-        <div className={`p-3 ${color} rounded-xl group-hover:scale-110 transition-transform`}>
-          <Icon size={24} />
+      <div className="flex items-start justify-between mb-3">
+        <div className={`p-2 ${color} rounded-lg group-hover:scale-110 transition-transform`}>
+          <Icon size={20} />
         </div>
         {count !== undefined && (
-          <span className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-full text-sm font-bold">
+          <span className="px-2 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-full text-xs font-bold">
             {count}
           </span>
         )}
       </div>
-      <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-2">{title}</h3>
-      <p className="text-sm text-gray-600 dark:text-gray-400">{description}</p>
-      <div className="flex items-center gap-1 text-almet-sapphire mt-3 text-sm font-medium">
+      <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">{title}</h3>
+      <p className="text-xs text-gray-600 dark:text-gray-400 leading-relaxed">{description}</p>
+      <div className="flex items-center gap-1 text-almet-sapphire mt-2 text-xs font-medium">
         <span>View details</span>
-        <ChevronRight size={16} />
+        <ChevronRight size={14} />
       </div>
     </button>
   );
@@ -193,37 +199,37 @@ export default function ResignationExitManagement() {
     return (
       <button
         onClick={() => onView(item)}
-        className="w-full bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:shadow-md hover:border-almet-sapphire dark:hover:border-almet-sapphire transition-all text-left group"
+        className="w-full bg-white dark:bg-gray-800 border-2 border-gray-200 dark:border-gray-700 rounded-lg p-3 hover:shadow-md hover:border-almet-sapphire dark:hover:border-almet-sapphire transition-all text-left group"
       >
         <div className="flex items-start gap-3">
-          <div className="p-3 bg-almet-mystic dark:bg-almet-cloud-burst/20 rounded-lg group-hover:bg-almet-sapphire group-hover:text-white transition-colors">
-            <Icon size={18} className="text-almet-sapphire group-hover:text-white" />
+          <div className="p-2 bg-almet-mystic dark:bg-almet-cloud-burst/20 rounded-lg group-hover:bg-almet-sapphire group-hover:text-white transition-colors">
+            <Icon size={16} className="text-almet-sapphire group-hover:text-white" />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-start justify-between mb-2">
               <div>
-                <h4 className="text-sm font-semibold text-gray-900 dark:text-white">{item.employee_name}</h4>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
+                <h4 className="text-xs font-semibold text-gray-900 dark:text-white">{item.employee_name}</h4>
+                <p className="text-[10px] text-gray-600 dark:text-gray-400 mt-0.5">
                   {item.employee_id} • {item.position}
                 </p>
               </div>
               <StatusBadge status={item.status} />
             </div>
             
-            <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400 mb-3">
+            <div className="flex items-center gap-2 text-[10px] text-gray-500 dark:text-gray-400 mb-2">
               <div className="flex items-center gap-1">
-                <Building2 size={12} />
+                <Building2 size={10} />
                 <span>{item.department}</span>
               </div>
               {item.last_working_day && (
                 <div className="flex items-center gap-1">
-                  <Calendar size={12} />
+                  <Calendar size={10} />
                   <span>{resignationExitService.helpers.formatDate(item.last_working_day)}</span>
                 </div>
               )}
               {item.days_remaining !== undefined && (
                 <div className="flex items-center gap-1">
-                  <Clock size={12} />
+                  <Clock size={10} />
                   <span className={`font-medium ${
                     item.days_remaining <= 7 ? 'text-red-600 dark:text-red-400' : 
                     item.days_remaining <= 14 ? 'text-amber-600 dark:text-amber-400' : ''
@@ -235,16 +241,16 @@ export default function ResignationExitManagement() {
             </div>
             
             <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 text-almet-sapphire text-xs font-medium">
+              <div className="flex items-center gap-1 text-almet-sapphire text-[10px] font-medium">
                 <span>View details</span>
-                <ChevronRight size={14} />
+                <ChevronRight size={12} />
               </div>
               {userRole.is_admin && (
                 <button 
                   onClick={(e) => { e.stopPropagation(); onDelete(item); }}
-                  className="ml-auto flex items-center gap-1 px-3 py-1.5 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-xs font-medium hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                  className="ml-auto flex items-center gap-1 px-2 py-1 bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 rounded-lg text-[10px] font-medium hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
                 >
-                  <Trash2 size={12} />
+                  <Trash2 size={10} />
                   Delete
                 </button>
               )}
@@ -260,55 +266,55 @@ export default function ResignationExitManagement() {
     const pendingExits = data.exitInterviews.filter(e => e.status === 'PENDING');
 
     return (
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Welcome Section */}
-        <div className="bg-gradient-to-br from-almet-sapphire via-almet-astral to-almet-steel-blue rounded-xl p-6 text-white">
-          <h2 className="text-xl font-bold mb-2">Employee Offboarding</h2>
-          <p className="text-blue-100 text-sm">
+        <div className="bg-gradient-to-br from-almet-sapphire via-almet-astral to-almet-steel-blue rounded-lg p-4 text-white">
+          <h2 className="text-base font-bold mb-1">Employee Offboarding</h2>
+          <p className="text-white/90 text-xs">
             Manage resignations and exit interviews
           </p>
         </div>
 
         {/* Quick Actions */}
         <div>
-          <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-            <Plus size={18} className="text-almet-sapphire" />
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3 flex items-center gap-2">
+            <Plus size={16} className="text-almet-sapphire" />
             Quick Actions
           </h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
             <button 
               onClick={() => { setModalType('submit_resignation'); setShowModal(true); }}
-              className="bg-white dark:bg-gray-800 rounded-lg p-4 border-2 border-gray-200 dark:border-gray-700 hover:border-red-500 dark:hover:border-red-500 hover:shadow-lg transition-all group"
+              className="bg-white dark:bg-gray-800 rounded-lg p-3 border-2 border-gray-200 dark:border-gray-700 hover:border-red-500 dark:hover:border-red-500 hover:shadow-lg transition-all group"
             >
-              <div className="p-3 bg-red-50 dark:bg-red-900/20 rounded-lg mb-3 group-hover:bg-red-500 group-hover:text-white transition-colors inline-flex">
-                <Plus size={20} className="text-red-600 dark:text-red-400 group-hover:text-white" />
+              <div className="p-2 bg-red-50 dark:bg-red-900/20 rounded-lg mb-2 group-hover:bg-red-500 group-hover:text-white transition-colors inline-flex">
+                <Plus size={18} className="text-red-600 dark:text-red-400 group-hover:text-white" />
               </div>
-              <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Submit Resignation</h4>
-              <p className="text-xs text-gray-600 dark:text-gray-400">Start resignation process</p>
+              <h4 className="text-xs font-semibold text-gray-900 dark:text-white mb-1">Submit Resignation</h4>
+              <p className="text-[10px] text-gray-600 dark:text-gray-400">Start resignation process</p>
             </button>
 
             {userRole.is_admin && (
               <>
                 <button 
                   onClick={() => { setModalType('create_exit_interview'); setShowModal(true); }}
-                  className="bg-white dark:bg-gray-800 rounded-lg p-4 border-2 border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-lg transition-all group"
+                  className="bg-white dark:bg-gray-800 rounded-lg p-3 border-2 border-gray-200 dark:border-gray-700 hover:border-blue-500 dark:hover:border-blue-500 hover:shadow-lg transition-all group"
                 >
-                  <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg mb-3 group-hover:bg-blue-500 group-hover:text-white transition-colors inline-flex">
-                    <Plus size={20} className="text-blue-600 dark:text-blue-400 group-hover:text-white" />
+                  <div className="p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg mb-2 group-hover:bg-blue-500 group-hover:text-white transition-colors inline-flex">
+                    <Plus size={18} className="text-blue-600 dark:text-blue-400 group-hover:text-white" />
                   </div>
-                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Create Exit Interview</h4>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">Schedule new interview</p>
+                  <h4 className="text-xs font-semibold text-gray-900 dark:text-white mb-1">Create Exit Interview</h4>
+                  <p className="text-[10px] text-gray-600 dark:text-gray-400">Schedule new interview</p>
                 </button>
 
                 <button 
                   onClick={() => window.location.href = 'question-management/'}
-                  className="bg-white dark:bg-gray-800 rounded-lg p-4 border-2 border-gray-200 dark:border-gray-700 hover:border-purple-500 dark:hover:border-purple-500 hover:shadow-lg transition-all group"
+                  className="bg-white dark:bg-gray-800 rounded-lg p-3 border-2 border-gray-200 dark:border-gray-700 hover:border-purple-500 dark:hover:border-purple-500 hover:shadow-lg transition-all group"
                 >
-                  <div className="p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg mb-3 group-hover:bg-purple-500 group-hover:text-white transition-colors inline-flex">
-                    <TrendingUp size={20} className="text-purple-600 dark:text-purple-400 group-hover:text-white" />
+                  <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded-lg mb-2 group-hover:bg-purple-500 group-hover:text-white transition-colors inline-flex">
+                    <Settings size={18} className="text-purple-600 dark:text-purple-400 group-hover:text-white" />
                   </div>
-                  <h4 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">Manage Questions</h4>
-                  <p className="text-xs text-gray-600 dark:text-gray-400">Configure interview questions</p>
+                  <h4 className="text-xs font-semibold text-gray-900 dark:text-white mb-1">Manage Questions</h4>
+                  <p className="text-[10px] text-gray-600 dark:text-gray-400">Configure interview questions</p>
                 </button>
               </>
             )}
@@ -317,8 +323,8 @@ export default function ResignationExitManagement() {
 
         {/* Main Categories */}
         <div>
-          <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4">Categories</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-3">Categories</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <ActionCard
               icon={FileText}
               title="Resignations"
@@ -350,46 +356,46 @@ export default function ResignationExitManagement() {
     });
 
     return (
-      <div className="space-y-4">
+      <div className="space-y-3">
         <Breadcrumb path={[title]} />
 
-        <div className="bg-gradient-to-br from-almet-sapphire to-almet-astral rounded-xl p-6 text-white">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="p-3 bg-white/20 rounded-lg">
-              <Icon size={24} />
+        <div className="bg-gradient-to-br from-almet-sapphire to-almet-astral rounded-lg p-4 text-white">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="p-2 bg-white/20 rounded-lg">
+              <Icon size={20} />
             </div>
             <div>
-              <h2 className="text-xl font-bold">{title}</h2>
-              <p className="text-blue-100 text-sm mt-1">
+              <h2 className="text-base font-bold">{title}</h2>
+              <p className="text-white/90 text-xs mt-0.5">
                 {filtered.length} {filtered.length === 1 ? 'item' : 'items'} found
               </p>
             </div>
           </div>
           <button
             onClick={navigateToHome}
-            className="flex items-center gap-2 px-4 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-sm font-medium"
+            className="flex items-center gap-1.5 px-3 py-1.5 bg-white/10 hover:bg-white/20 rounded-lg transition-colors text-xs font-medium"
           >
-            <ArrowLeft size={16} />
+            <ArrowLeft size={14} />
             Back to Home
           </button>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-          <div className="flex flex-col sm:flex-row gap-3">
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+          <div className="flex flex-col sm:flex-row gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
               <input 
                 type="text"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 placeholder="Search by name or employee ID..."
-                className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
+                className="w-full pl-9 pr-3 py-2 text-xs border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
               />
             </div>
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-4 py-2.5 text-sm border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-transparent min-w-[200px]"
+              className="px-3 py-2 text-xs border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-almet-sapphire focus:border-transparent min-w-[180px]"
             >
               <option value="all">All Status</option>
               <option value="PENDING_MANAGER">Pending Manager</option>
@@ -401,21 +407,21 @@ export default function ResignationExitManagement() {
         </div>
 
         {filtered.length === 0 ? (
-          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-12 text-center">
-            <Icon size={48} className="mx-auto text-gray-400 mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">No items found</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-6">
+          <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-8 text-center">
+            <Icon size={40} className="mx-auto text-gray-400 mb-3" />
+            <h3 className="text-sm font-semibold text-gray-900 dark:text-white mb-1">No items found</h3>
+            <p className="text-xs text-gray-600 dark:text-gray-400 mb-4">
               {searchTerm || filterStatus !== 'all' ? 'Try adjusting your filters' : 'No data available'}
             </p>
             <button
               onClick={navigateToHome}
-              className="px-4 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors text-sm font-medium"
+              className="px-3 py-1.5 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors text-xs font-medium"
             >
               Back to Home
             </button>
           </div>
         ) : (
-          <div className="space-y-3">
+          <div className="space-y-2">
             {filtered.map(item => (
               <ListItem 
                 key={item.id} 

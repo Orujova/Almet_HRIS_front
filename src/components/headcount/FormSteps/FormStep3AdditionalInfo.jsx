@@ -405,58 +405,6 @@ const FormStep3AdditionalInfo = ({
         )}
       </div>
 
-      {/* EMPLOYEE TAG - kompakt */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-1.5">
-          <Tag className="text-almet-san-juan" size={14} />
-          <h4 className={`text-xs font-medium ${textPrimary}`}>Employee Tag</h4>
-        </div>
-
-        <FormField
-          label=""
-          name="tag_id"
-          value={formData.tag_id || ""}
-          onChange={handleTagSelectionChange}
-          type="select"
-          options={getFormattedTagOptions()}
-          placeholder="Select a tag..."
-          showColors={true}
-          searchable={true}
-          clearable={true}
-          validationError={validationErrors.tag_id}
-          helpText="Choose one tag"
-        />
-        
-        {formData.tag_id && (
-          <div className="mt-1.5">
-            <div className={`text-[10px] ${textMuted} mb-1`}>
-              Selected tag
-            </div>
-            <div className="flex flex-wrap gap-1">
-              {(() => {
-                const selectedTag = getFormattedTagOptions().find(tag => tag.value === formData.tag_id);
-                return selectedTag ? (
-                  <span
-                    className="inline-flex items-center px-2 py-0.5 rounded text-[10px] text-white font-medium"
-                    style={{ backgroundColor: selectedTag.color || '#6B7280' }}
-                  >
-                    {selectedTag.label}
-                  </span>
-                ) : null;
-              })()}
-            </div>
-          </div>
-        )}
-
-        {(!getFormattedTagOptions() || getFormattedTagOptions().length === 0) && (
-          <div className={`text-center py-3 bg-gray-50 dark:bg-gray-800 rounded-lg border ${borderColor}`}>
-            <Tag size={20} className={`mx-auto mb-1.5 ${textMuted} opacity-50`} />
-            <p className={`text-xs ${textMuted}`}>
-              No tags available
-            </p>
-          </div>
-        )}
-      </div>
 
       {/* ORG CHART VISIBILITY - kompakt */}
       <div className="space-y-2">

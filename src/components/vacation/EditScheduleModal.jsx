@@ -12,23 +12,24 @@ export default function EditScheduleModal({
   loading
 }) {
   
-  // ✅ Auto-select Paid Vacation on mount
-  useEffect(() => {
-    if (show && editingSchedule && vacationTypes.length > 0) {
-      // Find Paid Vacation
-      const paidVacation = vacationTypes.find(t => 
-        t.name.toLowerCase().includes('paid') || 
-        t.name.toLowerCase().includes('annual')
-      );
-      
-      if (paidVacation && !editingSchedule.vacation_type_id) {
-        setEditingSchedule(prev => ({
-          ...prev,
-          vacation_type_id: paidVacation.id
-        }));
-      }
+useEffect(() => {
+  if (show && editingSchedule && vacationTypes.length > 0) {
+    // ✅ CRITICAL: Always force Paid Vacation on edit
+    const paidVacation = vacationTypes.find(t => 
+      t.name.toLowerCase().includes('paid') || 
+      t.name.toLowerCase().includes('annual') ||
+      t.name.toLowerCase().includes('ödənişli')  // Azərbaycan adı
+    );
+    
+    if (paidVacation) {
+      // ✅ FORCE UPDATE - həmişə Paid Vacation
+      setEditingSchedule(prev => ({
+        ...prev,
+        vacation_type_id: paidVacation.id
+      }));
     }
-  }, [show, editingSchedule, vacationTypes]);
+  }
+}, [show, editingSchedule?.id, vacationTypes]); // ✅ editingSchedule.id dependency
   
   if (!show || !editingSchedule) return null;
 

@@ -196,9 +196,9 @@ const FormStep2JobInfo = ({
 
   // UPDATED: Calculate contract end date based on duration using API config
   const calculateContractEndDate = () => {
-    if (!formData.start_date || formData.contract_duration === 'PERMANENT') return null;
+    if (!formData.contract_start_date || formData.contract_duration === 'PERMANENT') return null;
     
-    const startDate = new Date(formData.start_date);
+    const startDate = new Date(formData.contract_start_date);
     let endDate = new Date(startDate);
     
     // Try to use contract config for accurate duration calculation
@@ -213,6 +213,9 @@ const FormStep2JobInfo = ({
     switch (formData.contract_duration) {
       case '3_MONTHS':
         endDate.setMonth(endDate.getMonth() + 3);
+        break;
+      case '1_MONTH':
+        endDate.setMonth(endDate.getMonth() + 1);
         break;
       case '6_MONTHS':
         endDate.setMonth(endDate.getMonth() + 6);
@@ -407,9 +410,7 @@ const FormStep2JobInfo = ({
                 <span className="text-sm text-almet-sapphire font-medium">
                   Auto-calculated Contract End: {new Date(calculateContractEndDate()).toLocaleDateString()}
                 </span>
-                <p className="text-xs text-almet-sapphire/80 mt-1">
-                  Based on start date and contract duration
-                </p>
+           
               </div>
             </div>
           </div>
@@ -423,17 +424,15 @@ const FormStep2JobInfo = ({
               <div className={`p-3 ${bgInfo} border border-blue-200 dark:border-blue-800 rounded-lg`}>
                 <div className="flex items-start">
                   <Info className="h-4 w-4 text-blue-600 dark:text-blue-400 mt-0.5 mr-2 flex-shrink-0" />
-                  <div className="text-sm text-blue-800 dark:text-blue-300 space-y-1">
-                    <div className="font-medium">{selectedConfig.display_name} Details:</div>
-                    <div className="grid grid-cols-2 gap-2 text-xs mt-2">
+                  <div className="text-xs flex items-center gap-4 text-blue-800 dark:text-blue-300 space-y-1">
+                 
+                 
                     
-                      <div>
+                    
                         <span className="font-medium">Probation:</span> {selectedConfig.probation_days} days
-                      </div>
-                      <div className="col-span-2">
-                        <span className="font-medium">Total until Active:</span> {selectedConfig.total_days_until_active} days
-                      </div>
-                    </div>
+                  
+                 
+                   
                   </div>
                 </div>
               </div>
@@ -628,37 +627,7 @@ const FormStep2JobInfo = ({
           />
         </div>
 
-        {/* Selected Grading Level Information */}
-        {formData.grading_level && gradeOptions.length > 0 && (
-          <div className={`p-4 ${bgSuccess} border border-green-200 dark:border-green-800 rounded-lg`}>
-            <div className="flex items-start">
-              <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400 mt-1 mr-3 flex-shrink-0" />
-              <div>
-                <h4 className="text-sm font-medium text-green-800 dark:text-green-300 mb-2">
-                  Selected Grading Level
-                </h4>
-                {(() => {
-                  const selectedGrade = gradeOptions.find(g => g.value === formData.grading_level);
-                  return selectedGrade ? (
-                    <div className="text-sm text-green-700 dark:text-green-400 space-y-1">
-                      <div className="flex items-center">
-                        <span className="font-medium mr-2">Code:</span>
-                        <span className="px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200 rounded text-xs">
-                          {selectedGrade.label}
-                        </span>
-                      </div>
-                      {selectedGrade.description && (
-                        <div>
-                          <span className="font-medium">Description:</span> {selectedGrade.description}
-                        </div>
-                      )}
-                    </div>
-                  ) : null;
-                })()}
-              </div>
-            </div>
-          </div>
-        )}
+      
 
         {/* No grading levels warning */}
         {!hasOptions(gradeOptions) && formData.position_group && !loadingGradingLevels && (

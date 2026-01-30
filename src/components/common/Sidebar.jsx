@@ -24,7 +24,8 @@ import {
   GraduationCap,
   ChevronRight,
   FileSignature,
-  Megaphone
+  Megaphone,
+  BookOpen
 } from "lucide-react";
 import { employeeService } from '@/services/newsService';
 
@@ -172,6 +173,7 @@ const Sidebar = ({ collapsed = false }) => {
         icon: <FileSignature className="w-4 h-4" />,
         path: "/efficiency/contracts",
         id: "contracts",
+        requiredRole: ['admin', 'manager']
 
       },
       { 
@@ -194,6 +196,7 @@ const Sidebar = ({ collapsed = false }) => {
         icon: <LogOut  className="w-4 h-4" />,
         path: "/requests/resignation",
         id: "resignation",
+         requiredRole: ['admin']
       
       },
       {
@@ -247,11 +250,18 @@ const Sidebar = ({ collapsed = false }) => {
         id: "policies"
       }, 
       {
-        label: " Procedures",
+        label: "Procedures",
         icon: <ListChecks className="w-4 h-4" />,
         path: "/company-procedures",
         id: "procedures"
-      }, 
+      },
+      {
+        label: "Guidelines",
+        icon: <BookOpen className="w-4 h-4" />,
+        path: "/workspace/library/guidelines",
+        id: "guidelines",
+        isHighlighted: true // Special flag for red styling
+      },
       { 
         type: "section", 
         label: "SETTINGS",
@@ -350,21 +360,25 @@ const Sidebar = ({ collapsed = false }) => {
                 onMouseEnter={() => setHoveredItem(item.id)}
                 onMouseLeave={() => setHoveredItem(null)}
                 className={`flex items-center ${collapsed ? 'justify-center' : 'justify-between'} px-3 py-1.5 text-xs font-medium rounded-md my-0.5 transition-all duration-300 group ${
-                  pathname.startsWith(item.path) 
-                    ? "bg-[#5975af] text-white shadow-md transform scale-[1.02]" 
-                    : "text-gray-600 dark:text-almet-bali-hai hover:bg-gray-100 dark:hover:bg-almet-comet hover:shadow-sm"
+                  item.isHighlighted 
+                    ? (pathname.startsWith(item.path)
+                        ? "bg-gradient-to-r from-red-500 to-red-600 text-white shadow-md transform scale-[1.02]"
+                        : "bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 text-red-600 dark:text-red-400 hover:from-red-100 hover:to-red-200 dark:hover:from-red-900/30 dark:hover:to-red-800/30 hover:shadow-sm border border-red-200 dark:border-red-800/50")
+                    : (pathname.startsWith(item.path) 
+                        ? "bg-[#5975af] text-white shadow-md transform scale-[1.02]" 
+                        : "text-gray-600 dark:text-almet-bali-hai hover:bg-gray-100 dark:hover:bg-almet-comet hover:shadow-sm")
                 }`}
                 title={collapsed ? item.label : ''}
               >
                 <div className="flex items-center gap-2">
                   <span className={`transition-all duration-300 ${
-                    pathname.startsWith(item.path) 
-                      ? "text-white" 
-                      : "text-gray-500 dark:text-gray-400"
+                    item.isHighlighted
+                      ? (pathname.startsWith(item.path) ? "text-white" : "text-red-600 dark:text-red-400")
+                      : (pathname.startsWith(item.path) ? "text-white" : "text-gray-500 dark:text-gray-400")
                   } ${hoveredItem === item.id ? 'transform scale-110' : ''}`}>
                     {item.icon}
                   </span>
-                  {!collapsed && <span>{item.label}</span>}
+                  {!collapsed && <span className={item.isHighlighted && !pathname.startsWith(item.path) ? "font-semibold" : ""}>{item.label}</span>}
                 </div>
                 
                 {!collapsed && (

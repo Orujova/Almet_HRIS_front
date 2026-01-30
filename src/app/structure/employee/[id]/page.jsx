@@ -91,6 +91,7 @@ const EmployeeDetailPageContent = () => {
   const [contractConfigs, setContractConfigs] = useState({});
   const [selectedReview, setSelectedReview] = useState(null);
   const [activeReviewFilter, setActiveReviewFilter] = useState('all'); // 'all', 'employee', 'manager'
+const [respondentType, setRespondentType] = useState('EMPLOYEE'); // ✅ ƏLAVƏ ET
 
   // Theme classes
   const bgPrimary = darkMode ? "bg-almet-cloud-burst" : "bg-almet-mystic";
@@ -227,7 +228,7 @@ const EmployeeDetailPageContent = () => {
   };
 
   const isOwnProfile = currentUser?.id === currentEmployee?.id;
-
+console.log(selectedReview)
   // 🆕 Filter reviews based on respondent type
   const getFilteredReviews = () => {
     if (activeReviewFilter === 'employee') {
@@ -242,7 +243,7 @@ const EmployeeDetailPageContent = () => {
     }
     return allProbationReviews; // 'all'
   };
-
+console.log(allProbationReviews)
   const pendingReviews = allProbationReviews.filter(r => r.status === 'PENDING');
   const completedReviews = allProbationReviews.filter(r => r.status === 'COMPLETED');
 
@@ -1011,218 +1012,210 @@ const EmployeeDetailPageContent = () => {
                 </div>
               )}
 
-              {/* 🆕🆕🆕 PROBATION REVIEWS TAB */}
               {activeTab === 'probation-reviews' && (
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h3 className={`${textPrimary} text-lg font-bold`}>Probation Reviews</h3>
-                    <div className={`px-4 py-2 rounded-xl ${bgAccent} border ${borderColor} flex items-center gap-2`}>
-                      <MessageSquare size={16} className="text-almet-sapphire" />
-                      <span className={`text-xs font-semibold ${textMuted}`}>
-                        {allProbationReviews.length} Total Reviews
-                      </span>
-                    </div>
-                  </div>
+  <div className="space-y-6">
 
-                  {/* Stats Cards */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className={`${bgCard} rounded-lg border ${borderColor} p-4`}>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className={`text-xs ${textMuted} mb-1`}>Total Reviews</p>
-                          <p className={`text-2xl font-bold ${textPrimary}`}>{allProbationReviews.length}</p>
-                        </div>
-                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
-                          <MessageSquare size={20} className="text-blue-600 dark:text-blue-400" />
-                        </div>
-                      </div>
-                    </div>
 
-                    <div className={`${bgCard} rounded-lg border ${borderColor} p-4`}>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className={`text-xs ${textMuted} mb-1`}>Pending</p>
-                          <p className={`text-2xl font-bold text-amber-600 dark:text-amber-400`}>{pendingReviews.length}</p>
-                        </div>
-                        <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
-                          <Clock size={20} className="text-amber-600 dark:text-amber-400" />
-                        </div>
-                      </div>
-                    </div>
+    {/* Stats Cards */}
+    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className={`${bgCard} rounded-lg border ${borderColor} p-4`}>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className={`text-xs ${textMuted} mb-1`}>Total Reviews</p>
+            <p className={`text-2xl font-bold ${textPrimary}`}>{allProbationReviews.length}</p>
+          </div>
+          <div className="p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+            <MessageSquare size={18} className="text-blue-600 dark:text-blue-400" />
+          </div>
+        </div>
+      </div>
 
-                    <div className={`${bgCard} rounded-lg border ${borderColor} p-4`}>
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className={`text-xs ${textMuted} mb-1`}>Completed</p>
-                          <p className={`text-2xl font-bold text-green-600 dark:text-green-400`}>{completedReviews.length}</p>
-                        </div>
-                        <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
-                          <CheckCircle size={20} className="text-green-600 dark:text-green-400" />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
+      <div className={`${bgCard} rounded-lg border ${borderColor} p-4`}>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className={`text-xs ${textMuted} mb-1`}>Pending</p>
+            <p className={`text-2xl font-bold text-amber-600 dark:text-amber-400`}>{pendingReviews.length}</p>
+          </div>
+          <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+            <Clock size={18} className="text-amber-600 dark:text-amber-400" />
+          </div>
+        </div>
+      </div>
 
-                  {/* Filter Buttons */}
-                  <div className={`${bgCard} rounded-lg border ${borderColor} p-3`}>
-                    <div className="flex flex-wrap gap-2">
-                      <button
-                        onClick={() => setActiveReviewFilter('all')}
-                        className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors ${
-                          activeReviewFilter === 'all'
-                            ? 'bg-almet-sapphire text-white'
-                            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                        }`}
-                      >
-                        All Reviews ({allProbationReviews.length})
-                      </button>
-                      <button
-                        onClick={() => setActiveReviewFilter('employee')}
-                        className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors ${
-                          activeReviewFilter === 'employee'
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                        }`}
-                      >
-                        Onboarding Reviews
-                      </button>
-                      <button
-                        onClick={() => setActiveReviewFilter('manager')}
-                        className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors ${
-                          activeReviewFilter === 'manager'
-                            ? 'bg-purple-600 text-white'
-                            : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                        }`}
-                      >
-                        Manager Reviews
-                      </button>
-                    </div>
-                  </div>
+      <div className={`${bgCard} rounded-lg border ${borderColor} p-4`}>
+        <div className="flex items-center justify-between">
+          <div>
+            <p className={`text-xs ${textMuted} mb-1`}>Completed</p>
+            <p className={`text-2xl font-bold text-green-600 dark:text-green-400`}>{completedReviews.length}</p>
+          </div>
+          <div className="p-3 bg-green-50 dark:bg-green-900/20 rounded-lg">
+            <CheckCircle size={18} className="text-green-600 dark:text-green-400" />
+          </div>
+        </div>
+      </div>
+    </div>
 
-                  {/* Reviews List */}
-                  <div className="space-y-3">
-                    {getFilteredReviews().length === 0 ? (
-                      <div className={`${bgCard} rounded-lg border ${borderColor} p-12 text-center`}>
-                        <MessageSquare size={48} className={`mx-auto ${textMuted} mb-3`} />
-                        <h4 className={`text-lg font-bold ${textPrimary} mb-2`}>No Reviews Found</h4>
-                        <p className={`text-sm ${textMuted}`}>
-                          {activeReviewFilter === 'all' 
-                            ? 'No probation reviews available yet'
-                            : activeReviewFilter === 'employee'
-                            ? 'You haven\'t completed any self-assessments yet'
-                            : 'No manager reviews completed yet'}
-                        </p>
-                      </div>
-                    ) : (
-                      getFilteredReviews().map((review) => {
-                        const badge = getReviewTypeBadge(review.review_period);
-                        const isPending = review.status === 'PENDING';
-                        const hasEmployeeResponse = review.employee_responses && review.employee_responses.length > 0;
-                        const hasManagerResponse = review.manager_responses && review.manager_responses.length > 0;
-                        
-                        return (
-                          <div
-                            key={review.id}
-                            className={`${bgCard} rounded-lg border-2 ${
-                              isPending ? 'border-amber-200 dark:border-amber-800' : `${borderColor}`
-                            } p-4 hover:shadow-md transition-all`}
-                          >
-                            <div className="flex items-start justify-between mb-3">
-                              <div className="flex items-center gap-2">
-                                <div className={`p-2 ${isPending ? 'bg-amber-50 dark:bg-amber-900/20' : 'bg-green-50 dark:bg-green-900/20'} rounded-lg`}>
-                                  {isPending ? (
-                                    <Clock size={18} className="text-amber-600 dark:text-amber-400" />
-                                  ) : (
-                                    <CheckCircle size={18} className="text-green-600 dark:text-green-400" />
-                                  )}
-                                </div>
-                                <div>
-                                  <h4 className={`text-sm font-semibold ${textPrimary}`}>
-                                    {review.review_period.replace('_', '-Day')} Review
-                                  </h4>
-                                  <p className={`text-xs ${textMuted} mt-0.5`}>
-                                    Created: {formatDate(review.created_at)}
-                                  </p>
-                                </div>
-                              </div>
+    {/* Filter Buttons */}
+    <div className={`${bgCard} rounded-lg border ${borderColor} p-3`}>
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => setActiveReviewFilter('all')}
+          className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors ${
+            activeReviewFilter === 'all'
+              ? 'bg-almet-sapphire text-white'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+          }`}
+        >
+          All Reviews ({allProbationReviews.length})
+        </button>
+        <button
+          onClick={() => setActiveReviewFilter('employee')}
+          className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors ${
+            activeReviewFilter === 'employee'
+              ? 'bg-blue-600 text-white'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+          }`}
+        >
+          Employee Review
+        </button>
+        <button
+          onClick={() => setActiveReviewFilter('manager')}
+          className={`px-4 py-2 rounded-lg text-xs font-medium transition-colors ${
+            activeReviewFilter === 'manager'
+              ? 'bg-purple-600 text-white'
+              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+          }`}
+        >
+          Manager Reviews
+        </button>
+      </div>
+    </div>
 
-                              <span className={`px-3 py-1 rounded-full text-xs font-semibold border ${
-                                isPending 
-                                  ? 'bg-amber-100 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800'
-                                  : 'bg-green-100 text-green-700 border-green-200 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800'
-                              }`}>
-                                {isPending ? 'Pending' : 'Completed'}
-                              </span>
-                            </div>
-
-                            {/* Response Status */}
-                            <div className="flex items-center gap-4 mb-3 text-xs">
-                              <div className={`flex items-center gap-1 ${hasEmployeeResponse ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`}>
-                                {hasEmployeeResponse ? (
-                                  <CheckCircle size={14} />
-                                ) : (
-                                  <XCircle size={14} />
-                                )}
-                                <span>Employee Self-Assessment</span>
-                              </div>
-                              <div className={`flex items-center gap-1 ${hasManagerResponse ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`}>
-                                {hasManagerResponse ? (
-                                  <CheckCircle size={14} />
-                                ) : (
-                                  <XCircle size={14} />
-                                )}
-                                <span>Manager Review</span>
-                              </div>
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex items-center gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
-                              {isPending && isOwnProfile && !hasEmployeeResponse && (
-                                <button
-                                  onClick={() => {
-                                    setSelectedReview(review);
-                                    setShowProbationModal(true);
-                                  }}
-                                  className="flex-1 px-3 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors text-xs font-medium flex items-center justify-center gap-2"
-                                >
-                                  <MessageSquare size={12} />
-                                  Complete Self-Assessment
-                                </button>
-                              )}
-                              
-                              {hasEmployeeResponse && (
-                                <button
-                                  onClick={() => {
-                                    // TODO: Show completed review modal
-                                    alert('View completed review - coming soon!');
-                                  }}
-                                  className="flex-1 px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors text-xs font-medium flex items-center justify-center gap-2"
-                                >
-                                  <Eye size={12} />
-                                  View My Assessment
-                                </button>
-                              )}
-
-                              {hasManagerResponse && (
-                                <button
-                                  onClick={() => {
-                                    // TODO: Show manager's review
-                                    alert('View manager review - coming soon!');
-                                  }}
-                                  className="flex-1 px-3 py-2 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors text-xs font-medium flex items-center justify-center gap-2"
-                                >
-                                  <Eye size={12} />
-                                  View Manager's Review
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        );
-                      })
-                    )}
+    {/* Reviews List */}
+    <div className="space-y-3">
+      {getFilteredReviews().length === 0 ? (
+        <div className={`${bgCard} rounded-lg border ${borderColor} p-12 text-center`}>
+          <MessageSquare size={48} className={`mx-auto ${textMuted} mb-3`} />
+          <h4 className={`text-lg font-bold ${textPrimary} mb-2`}>No Reviews Found</h4>
+          <p className={`text-sm ${textMuted}`}>
+            {activeReviewFilter === 'all' 
+              ? 'No probation reviews available yet'
+              : activeReviewFilter === 'employee'
+              ? 'No employee self-assessments completed yet'
+              : 'No manager reviews completed yet'}
+          </p>
+        </div>
+      ) : (
+        getFilteredReviews().map((review) => {
+   
+          const hasEmployeeResponse = review.employee_responses && review.employee_responses.length > 0;
+          const hasManagerResponse = review.manager_responses && review.manager_responses.length > 0;
+          
+          // ✅ Can employee complete self-assessment?
+          const canEmployeeComplete =  !hasEmployeeResponse;
+          
+          // ✅ Can view employee responses?
+          const canViewEmployeeResponse = hasEmployeeResponse;
+          
+          // ✅ Can view manager responses?
+          const canViewManagerResponse = hasManagerResponse;
+          
+          return (
+            <div
+              key={review.id}
+              className={`${bgCard} rounded-lg border-2 p-4 hover:shadow-md transition-all`}
+            >
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex items-center gap-2">
+                
+                  <div>
+                    <h4 className={`text-sm font-semibold ${textPrimary}`}>
+                      {review.review_period.replace('_', '-')} Review
+                    </h4>
+               
                   </div>
                 </div>
-              )}
+
+              
+              </div>
+
+              {/* Response Status */}
+              <div className="flex items-center gap-4 mb-3 text-xs">
+                <div className={`flex items-center gap-1 ${hasEmployeeResponse ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`}>
+                  {hasEmployeeResponse ? (
+                    <CheckCircle size={14} />
+                  ) : (
+                    <XCircle size={14} />
+                  )}
+                  <span>Onboarding Review</span>
+                </div>
+                <div className={`flex items-center gap-1 ${hasManagerResponse ? 'text-green-600 dark:text-green-400' : 'text-gray-400'}`}>
+                  {hasManagerResponse ? (
+                    <CheckCircle size={14} />
+                  ) : (
+                    <XCircle size={14} />
+                  )}
+                  <span>Manager Review</span>
+                </div>
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-2 pt-3 border-t border-gray-200 dark:border-gray-700">
+                {/* ✅ Employee can complete self-assessment if pending and not submitted */}
+                {canEmployeeComplete && (
+  <button
+    onClick={() => {
+      console.log('🔵 Opening EMPLOYEE modal for self-assessment');
+      setSelectedReview(review);
+      setRespondentType('EMPLOYEE');
+      setShowProbationModal(true);
+    }}
+    className="w-full px-3 py-2 bg-almet-sapphire text-white rounded-lg hover:bg-almet-astral transition-colors text-xs font-medium flex items-center justify-center gap-2"
+  >
+                    <MessageSquare size={12} />
+                    Complete Review
+                  </button>
+                )}
+                
+                {/* ✅ View employee responses */}
+{canViewEmployeeResponse && (
+  <button
+    onClick={() => {
+      console.log('🔵 Opening EMPLOYEE view modal');
+      setSelectedReview(review); // Əvvəlcə review-ı set et
+      setRespondentType('EMPLOYEE'); // Sonra respondent type set et
+      setShowProbationModal(true);
+    }}
+    className="flex-1 px-3 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors text-xs font-medium flex items-center justify-center gap-2"
+  >
+    <Eye size={12} />
+    View My Assessment
+  </button>
+)}
+
+{/* ✅ View manager responses */}
+{canViewManagerResponse && (
+  <button
+    onClick={() => {
+      console.log('🟣 Opening MANAGER view modal');
+      setSelectedReview(review);
+      setRespondentType('MANAGER');
+      setShowProbationModal(true);
+    }}
+    className="flex-1 px-3 py-2 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 border border-purple-200 dark:border-purple-800 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors text-xs font-medium flex items-center justify-center gap-2"
+  >
+    <Eye size={12} />
+    View Manager's Review
+  </button>
+)}
+              </div>
+            </div>
+          );
+        })
+      )}
+    </div>
+  </div>
+)}
 
               {/* Assets Tab */}
               {activeTab === 'assets' && (
@@ -1410,7 +1403,12 @@ const EmployeeDetailPageContent = () => {
           setSelectedReview(null);
           loadProbationData();
         }}
-        respondentType="EMPLOYEE"      />
+        respondentType={respondentType}  // ✅ state-dən istifadə edir
+        viewMode={
+          (respondentType === 'EMPLOYEE' && selectedReview.employee_responses?.length > 0) ||
+          (respondentType === 'MANAGER' && selectedReview.manager_responses?.length > 0)
+        }
+      />
     )}
   </div>
 </div>
