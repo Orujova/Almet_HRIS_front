@@ -1,6 +1,7 @@
-// src/components/headcount/Pagination.jsx - Compact & Clean Design
+// src/components/headcount/Pagination.jsx - FIXED VERSION
 import { ChevronLeft, ChevronRight, MoreHorizontal, ChevronsLeft, ChevronsRight } from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
+import { useCallback } from "react";
 
 const Pagination = ({
   currentPage = 1,
@@ -10,7 +11,9 @@ const Pagination = ({
   onPageChange,
   onPageSizeChange,
   loading = false,
-  className = ""
+  className = "",
+  // ✅ NEW: Add preserveFilters prop
+  preserveFilters = false
 }) => {
   const { darkMode } = useTheme();
 
@@ -69,30 +72,33 @@ const Pagination = ({
 
   const pageNumbers = getPageNumbers();
 
-  // Handle page change
-  const handlePageChange = (page) => {
+  // ✅ Handle page change with filter preservation
+  const handlePageChange = useCallback((page) => {
     if (page >= 1 && page <= actualTotalPages && page !== currentPage && !loading) {
+      console.log('📄 Pagination: Page changing to:', page, 'Preserve filters:', preserveFilters);
       onPageChange(page);
     }
-  };
+  }, [actualTotalPages, currentPage, loading, onPageChange, preserveFilters]);
 
-  // Handle page size change
-  const handlePageSizeChange = (newSize) => {
+  // ✅ Handle page size change with filter preservation
+  const handlePageSizeChange = useCallback((newSize) => {
     if (onPageSizeChange && newSize !== pageSize) {
+      console.log('📄 Pagination: Page size changing to:', newSize, 'Preserve filters:', preserveFilters);
       onPageSizeChange(newSize);
     }
-  };
+  }, [onPageSizeChange, pageSize, preserveFilters]);
 
-  // Handle quick jump
-  const handleQuickJump = (e) => {
+  // ✅ Handle quick jump with filter preservation
+  const handleQuickJump = useCallback((e) => {
     if (e.key === 'Enter') {
       const page = parseInt(e.target.value);
       if (page >= 1 && page <= actualTotalPages) {
+        console.log('📄 Pagination: Quick jumping to:', page, 'Preserve filters:', preserveFilters);
         handlePageChange(page);
         e.target.value = '';
       }
     }
-  };
+  }, [actualTotalPages, handlePageChange, preserveFilters]);
 
   // Don't render if no items
   if (totalItems === 0) {

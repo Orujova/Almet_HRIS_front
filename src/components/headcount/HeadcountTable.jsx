@@ -139,7 +139,42 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     status_needs_update: "",
     contract_expiring_days: ""
   });
+// ========================================
+// 🎯 PAGINATION HANDLERS - WITH WRAPPER FILTER PRESERVATION
+// ========================================
 
+const handlePageChange = useCallback((newPage) => {
+  console.log('📄 Page changing to:', newPage, 'Current BF filter:', localFilters.business_function);
+  
+  setCurrentPage(newPage);
+  
+  // ✅ Force preserve wrapper filter after page change
+  if (isWrapperFilterApplied && localFilters.business_function.length > 0) {
+    setTimeout(() => {
+      setLocalFilters(prev => ({
+        ...prev,
+        business_function: [...prev.business_function]
+      }));
+    }, 0);
+  }
+}, [setCurrentPage, isWrapperFilterApplied, localFilters.business_function]);
+
+const handlePageSizeChange = useCallback((newPageSize) => {
+  console.log('📄 Page size changing to:', newPageSize, 'Current BF filter:', localFilters.business_function);
+  
+  setPageSize(newPageSize);
+  setCurrentPage(1);
+  
+  // ✅ Force preserve wrapper filter after page size change
+  if (isWrapperFilterApplied && localFilters.business_function.length > 0) {
+    setTimeout(() => {
+      setLocalFilters(prev => ({
+        ...prev,
+        business_function: [...prev.business_function]
+      }));
+    }, 0);
+  }
+}, [setPageSize, setCurrentPage, isWrapperFilterApplied, localFilters.business_function]);
   const initialized = useRef(false);
   const lastFetchTime = useRef(0);
   const debounceRef = useRef(null);
@@ -1681,10 +1716,15 @@ const handleQuickExport = useCallback(async (format) => {
                 totalPages={pagination.totalPages}
                 totalItems={pagination.count || pagination.totalItems}
                 pageSize={pagination.pageSize}
-                onPageChange={setCurrentPage}
-                onPageSizeChange={setPageSize}
-                loading={loading.employees}
-                darkMode={darkMode}
+                onPageChange={handlePageChange}        // ✅ Use wrapped handler
+    onPageSizeChange={handlePageSizeChange} // ✅ Use wrapped handler
+    loading={loading.employees}
+    darkMode={darkMode}
+    preserveFilters={isWrapperFilterApplied}
+           
+           
+            
+           
                 showQuickJump={true}
                 showPageSizeSelector={true}
                 showItemsInfo={true}
