@@ -7,11 +7,210 @@ import { useToast } from "@/components/common/Toast";
 import { LoadingSpinner } from "@/components/common/LoadingSpinner";
 import { 
   ArrowLeft, FileText, Upload, Download, Eye, 
-  Trash2, Search, Grid, List, Calendar, Building2
+  Trash2, Search, Grid, List, Calendar, Building2,Edit
 } from "lucide-react";
 import { documentService } from "@/services/documentService";
 
-const DocumentCard = ({ doc, onView, onDownload, onDelete }) => (
+// app/workspace/library/folder/[id]/page.jsx
+
+const EditDocumentModal = ({ isOpen, onClose, document, folderId, onSuccess }) => {
+  const { showSuccess, showError } = useToast();
+  const [updating, setUpdating] = useState(false);
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    document_type: 'other',
+    file: null,
+    replaceFile: false
+  });
+
+  useEffect(() => {
+    if (document) {
+      setFormData({
+        title: document.title,
+        description: document.description || '',
+        document_type: document.document_type,
+        file: null,
+        replaceFile: false
+      });
+    }
+  }, [document]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setUpdating(true);
+      const data = new FormData();
+      
+      // CRITICAL: folder field əlavə et (required field)
+      data.append('folder', folderId);
+      data.append('title', formData.title);
+      data.append('description', formData.description);
+      data.append('document_type', formData.document_type);
+      
+      // Əgər yeni fayl seçilibsə, əlavə et
+      if (formData.replaceFile && formData.file) {
+        data.append('document_file', formData.file);
+      }
+      
+      // Use PATCH instead of PUT for partial update
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/documents/files/${document.id}/`, {
+        method: 'PATCH',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('accessToken')}`,
+        },
+        body: data
+      });
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.detail || JSON.stringify(error));
+      }
+
+      showSuccess('Document updated successfully!');
+      onSuccess();
+      onClose();
+    } catch (error) {
+      console.error('Update error:', error);
+      showError('Failed to update: ' + error.message);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  if (!isOpen || !document) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-almet-cloud-burst rounded-xl shadow-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <div className="p-4">
+          <h2 className="text-base font-bold text-almet-cloud-burst dark:text-white mb-4">
+            Edit Document
+          </h2>
+
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div>
+              <label className="block text-[11px] font-semibold text-almet-cloud-burst dark:text-white mb-1">
+                Title *
+              </label>
+              <input
+                type="text"
+                value={formData.title}
+                onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                className="w-full px-3 py-1.5 rounded-lg border border-almet-mystic dark:border-almet-san-juan bg-white dark:bg-almet-san-juan/20 text-almet-cloud-burst dark:text-white text-[11px] focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-almet-cloud-burst dark:text-white mb-1">
+                Description
+              </label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                rows={2}
+                className="w-full px-3 py-1.5 rounded-lg border border-almet-mystic dark:border-almet-san-juan bg-white dark:bg-almet-san-juan/20 text-almet-cloud-burst dark:text-white text-[11px] focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-almet-cloud-burst dark:text-white mb-1">
+                Document Type *
+              </label>
+              <select
+                value={formData.document_type}
+                onChange={(e) => setFormData({ ...formData, document_type: e.target.value })}
+                className="w-full px-3 py-1.5 rounded-lg border border-almet-mystic dark:border-almet-san-juan bg-white dark:bg-almet-san-juan/20 text-almet-cloud-burst dark:text-white text-[11px] focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
+                required
+              >
+                <option value="policy">Policy</option>
+                <option value="procedure">Procedure</option>
+                <option value="guideline">Guideline</option>
+                <option value="manual">Manual</option>
+                <option value="template">Template</option>
+                <option value="form">Form</option>
+                <option value="reference">Reference</option>
+                <option value="report">Report</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            {/* Current File Info */}
+            <div className="bg-almet-mystic/20 dark:bg-almet-san-juan/20 rounded-lg p-2">
+              <p className="text-[9px] text-almet-waterloo dark:text-almet-bali-hai mb-1">
+                Current file:
+              </p>
+              <p className="text-[10px] font-medium text-almet-cloud-burst dark:text-white">
+                {document.file_extension} • {document.file_size_display}
+              </p>
+            </div>
+
+            {/* Replace File Option */}
+            <div>
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={formData.replaceFile}
+                  onChange={(e) => setFormData({ 
+                    ...formData, 
+                    replaceFile: e.target.checked,
+                    file: null 
+                  })}
+                  className="rounded border-almet-mystic dark:border-almet-san-juan"
+                />
+                <span className="text-[11px] font-semibold text-almet-cloud-burst dark:text-white">
+                  Replace file
+                </span>
+              </label>
+            </div>
+
+            {formData.replaceFile && (
+              <div>
+                <label className="block text-[11px] font-semibold text-almet-cloud-burst dark:text-white mb-1">
+                  New File (PDF, DOCX, XLSX, PPTX - Max 20MB)
+                </label>
+                <input
+                  type="file"
+                  accept=".pdf,.docx,.xlsx,.pptx,.txt,.doc,.xls,.ppt"
+                  onChange={(e) => setFormData({ ...formData, file: e.target.files[0] })}
+                  className="w-full px-3 py-1.5 rounded-lg border border-almet-mystic dark:border-almet-san-juan bg-white dark:bg-almet-san-juan/20 text-almet-cloud-burst dark:text-white text-[11px] focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
+                />
+                {formData.file && (
+                  <p className="text-[9px] text-almet-waterloo dark:text-almet-bali-hai mt-1">
+                    {formData.file.name} ({(formData.file.size / 1024 / 1024).toFixed(2)} MB)
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 px-3 py-1.5 rounded-lg border border-almet-mystic dark:border-almet-san-juan text-almet-cloud-burst dark:text-white hover:bg-almet-mystic/30 dark:hover:bg-almet-san-juan/30 transition-all text-[11px] font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={updating}
+                className="flex-1 px-3 py-1.5 rounded-lg bg-almet-sapphire text-white hover:bg-almet-astral transition-all text-[11px] font-semibold disabled:opacity-50"
+              >
+                {updating ? 'Updating...' : 'Update'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+
+// DocumentCard update - edit button əlavə et
+const DocumentCard = ({ document, onView, onDownload, onDelete, onEdit }) => (
   <div className="bg-white dark:bg-almet-cloud-burst rounded-lg p-3 shadow-sm border border-almet-mystic/50 dark:border-almet-san-juan/50 transition-all duration-200 hover:shadow-md group">
     <div className="flex items-start gap-2">
       <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
@@ -21,46 +220,57 @@ const DocumentCard = ({ doc, onView, onDownload, onDelete }) => (
       <div className="flex-1 min-w-0">
         <div className="flex items-start justify-between gap-1 mb-1">
           <h4 className="font-semibold text-[11px] text-almet-cloud-burst dark:text-white group-hover:text-almet-sapphire dark:group-hover:text-almet-steel-blue transition-colors truncate">
-            {doc.title}
+            {document.title}
           </h4>
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              onDelete(doc);
-            }}
-            className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-50 text-red-600"
-          >
-            <Trash2 className="h-3 w-3" />
-          </button>
+          <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onEdit(document);
+              }}
+              className="p-0.5 rounded hover:bg-blue-50 text-blue-600"
+            >
+              <Edit className="h-3 w-3" />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete(document);
+              }}
+              className="p-0.5 rounded hover:bg-red-50 text-red-600"
+            >
+              <Trash2 className="h-3 w-3" />
+            </button>
+          </div>
         </div>
         
-        {doc.description && (
+        {document.description && (
           <p className="text-[9px] text-almet-waterloo dark:text-almet-bali-hai line-clamp-1 mb-1">
-            {doc.description}
+            {document.description}
           </p>
         )}
         
         <div className="flex items-center gap-1.5 mb-1">
           <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-almet-sapphire/10 text-almet-sapphire dark:bg-almet-steel-blue/10 dark:text-almet-steel-blue">
-            {doc.document_type}
+            {document.document_type}
           </span>
           <span className="text-[9px] text-almet-waterloo dark:text-almet-bali-hai">
-            {doc.file_size_display}
+            {document.file_size_display}
           </span>
         </div>
         
         <div className="flex items-center gap-2 text-[9px] text-almet-waterloo dark:text-almet-bali-hai mb-2">
           <span className="flex items-center gap-0.5">
             <Eye className="h-3 w-3" />
-            {doc.view_count}
+            {document.view_count}
           </span>
           <span className="flex items-center gap-0.5">
             <Download className="h-3 w-3" />
-            {doc.download_count}
+            {document.download_count}
           </span>
           <span className="flex items-center gap-0.5">
             <Calendar className="h-3 w-3" />
-            {new Date(doc.updated_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' })}
+            {new Date(document.updated_at).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit' })}
           </span>
         </div>
         
@@ -68,7 +278,7 @@ const DocumentCard = ({ doc, onView, onDownload, onDelete }) => (
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onView(doc);
+              onView(document);
             }}
             className="flex items-center gap-0.5 text-[10px] text-almet-sapphire dark:text-almet-steel-blue hover:bg-almet-sapphire/10 px-2 py-1 rounded transition-all font-medium"
           >
@@ -78,7 +288,7 @@ const DocumentCard = ({ doc, onView, onDownload, onDelete }) => (
           <button
             onClick={(e) => {
               e.stopPropagation();
-              onDownload(doc);
+              onDownload(document);
             }}
             className="flex items-center gap-0.5 text-[10px] text-almet-sapphire dark:text-almet-steel-blue hover:bg-almet-sapphire/10 px-2 py-1 rounded transition-all font-medium"
           >
@@ -91,7 +301,8 @@ const DocumentCard = ({ doc, onView, onDownload, onDelete }) => (
   </div>
 );
 
-const DocumentListRow = ({ doc, onView, onDownload, onDelete }) => (
+// DocumentListRow-a da eyni edit button əlavə et
+const DocumentListRow = ({ document, onView, onDownload, onDelete, onEdit }) => (
   <div className="bg-white dark:bg-almet-cloud-burst rounded-lg p-2.5 shadow-sm border border-almet-mystic/50 dark:border-almet-san-juan/50 transition-all duration-200 hover:shadow-md group">
     <div className="flex items-center gap-3">
       <div className="w-8 h-8 bg-gradient-to-br from-red-500 to-red-600 rounded-lg flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
@@ -101,55 +312,62 @@ const DocumentListRow = ({ doc, onView, onDownload, onDelete }) => (
       <div className="flex-1 min-w-0 grid grid-cols-12 gap-2 items-center">
         <div className="col-span-4">
           <h3 className="font-semibold text-[11px] text-almet-cloud-burst dark:text-white group-hover:text-almet-sapphire transition-colors truncate">
-            {doc.title}
+            {document.title}
           </h3>
-          {doc.description && (
+          {document.description && (
             <p className="text-[9px] text-almet-waterloo dark:text-almet-bali-hai truncate">
-              {doc.description}
+              {document.description}
             </p>
           )}
         </div>
 
         <div className="col-span-2">
           <span className="text-[9px] font-semibold px-1.5 py-0.5 rounded bg-almet-sapphire/10 text-almet-sapphire dark:bg-almet-steel-blue/10 dark:text-almet-steel-blue">
-            {doc.document_type}
+            {document.document_type}
           </span>
         </div>
 
         <div className="col-span-2 text-[10px] text-almet-waterloo dark:text-almet-bali-hai">
-          {doc.file_size_display}
+          {document.file_size_display}
         </div>
 
         <div className="col-span-2 text-[10px] text-almet-waterloo dark:text-almet-bali-hai">
           <div className="flex items-center gap-2">
             <span className="flex items-center gap-0.5">
               <Eye className="h-3 w-3" />
-              {doc.view_count}
+              {document.view_count}
             </span>
             <span className="flex items-center gap-0.5">
               <Download className="h-3 w-3" />
-              {doc.download_count}
+              {document.download_count}
             </span>
           </div>
         </div>
 
         <div className="col-span-2 flex items-center justify-end gap-1">
           <button
-            onClick={() => onView(doc)}
+            onClick={() => onView(document)}
             className="p-1.5 rounded hover:bg-almet-sapphire/10 text-almet-sapphire transition-all"
             title="View"
           >
             <Eye className="h-3.5 w-3.5" />
           </button>
           <button
-            onClick={() => onDownload(doc)}
+            onClick={() => onDownload(document)}
             className="p-1.5 rounded hover:bg-almet-sapphire/10 text-almet-sapphire transition-all"
             title="Download"
           >
             <Download className="h-3.5 w-3.5" />
           </button>
           <button
-            onClick={() => onDelete(doc)}
+            onClick={() => onEdit(document)}
+            className="p-1.5 rounded hover:bg-blue-50 text-blue-600 transition-all"
+            title="Edit"
+          >
+            <Edit className="h-3.5 w-3.5" />
+          </button>
+          <button
+            onClick={() => onDelete(document)}
             className="p-1.5 rounded hover:bg-red-50 text-red-600 transition-all"
             title="Delete"
           >
@@ -160,7 +378,6 @@ const DocumentListRow = ({ doc, onView, onDownload, onDelete }) => (
     </div>
   </div>
 );
-
 const UploadModal = ({ isOpen, onClose, folderId, onSuccess }) => {
   const { showSuccess, showError } = useToast();
   const [uploading, setUploading] = useState(false);
@@ -314,7 +531,13 @@ export default function FolderDocumentsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [editDocModalOpen, setEditDocModalOpen] = useState(false);
+const [selectedDocument, setSelectedDocument] = useState(null);
 
+const handleEditDocument = (doc) => {
+  setSelectedDocument(doc);
+  setEditDocModalOpen(true);
+};
   const textPrimary = darkMode ? "text-white" : "text-almet-cloud-burst";
   const textSecondary = darkMode ? "text-almet-bali-hai" : "text-gray-700";
 
@@ -517,32 +740,34 @@ export default function FolderDocumentsPage() {
 
         {/* Documents */}
         {filteredDocs.length > 0 ? (
-          viewMode === 'grid' ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-              {filteredDocs.map((doc) => (
-                <DocumentCard
-                  key={doc.id}
-                  doc={doc}
-                  onView={handleViewDocument}
-                  onDownload={handleDownloadDocument}
-                  onDelete={handleDeleteDocument}
-                />
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {filteredDocs.map((doc) => (
-                <DocumentListRow
-                  key={doc.id}
-                  doc={doc}
-                  onView={handleViewDocument}
-                  onDownload={handleDownloadDocument}
-                  onDelete={handleDeleteDocument}
-                />
-              ))}
-            </div>
-          )
-        ) : (
+  viewMode === 'grid' ? (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+      {filteredDocs.map((doc) => (
+        <DocumentCard
+          key={doc.id}  // Add this line
+          document={doc}
+          onView={handleViewDocument}
+          onDownload={handleDownloadDocument}
+          onDelete={handleDeleteDocument}
+          onEdit={handleEditDocument}
+        />
+      ))}
+    </div>
+  ) : (
+    <div className="space-y-2">
+      {filteredDocs.map((doc) => (
+        <DocumentListRow
+          key={doc.id}  // Add this line
+          document={doc}
+          onView={handleViewDocument}
+          onDownload={handleDownloadDocument}
+          onDelete={handleDeleteDocument}
+          onEdit={handleEditDocument}  // Also add onEdit here
+        />
+      ))}
+    </div>
+  )
+) : (
           <div className="text-center py-12 bg-white dark:bg-almet-cloud-burst rounded-lg border border-dashed border-almet-mystic dark:border-almet-san-juan">
             <FileText className="h-12 w-12 text-almet-waterloo dark:text-almet-bali-hai mx-auto mb-2" />
             <p className={`${textSecondary} text-[11px] mb-1`}>
@@ -557,7 +782,18 @@ export default function FolderDocumentsPage() {
           </div>
         )}
       </div>
+      
 
+<EditDocumentModal
+  isOpen={editDocModalOpen}
+  onClose={() => {
+    setEditDocModalOpen(false);
+    setSelectedDocument(null);
+  }}
+  document={selectedDocument}
+   folderId={folderId} 
+  onSuccess={loadData}
+/>
       <UploadModal
         isOpen={uploadModalOpen}
         onClose={() => setUploadModalOpen(false)}

@@ -10,7 +10,145 @@ import { useParams } from "next/navigation";
 import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
-const FolderCard = ({ folder, onDelete }) => (
+import { useToast } from "@/components/common/Toast";
+// app/workspace/library/company/[id]/page.jsx
+
+const EditFolderModal = ({ isOpen, onClose, folder, companyId, onSuccess }) => {
+  const { showSuccess, showError } = useToast();
+  const [updating, setUpdating] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    description: '',
+    icon: '📁',
+    order: 0
+  });
+
+  useEffect(() => {
+    if (folder) {
+      setFormData({
+        name: folder.name,
+        description: folder.description || '',
+        icon: folder.icon || '📁',
+        order: folder.order || 0
+      });
+    }
+  }, [folder]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setUpdating(true);
+      
+      // CRITICAL: company field əlavə et (required field)
+      const data = {
+        company: companyId,
+        name: formData.name,
+        description: formData.description,
+        icon: formData.icon,
+        order: formData.order
+      };
+
+      await documentService.updateFolder(folder.id, data);
+      showSuccess('Folder updated successfully!');
+      onSuccess();
+      onClose();
+    } catch (error) {
+      console.error('Update error:', error);
+      showError('Failed to update folder: ' + error.message);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  if (!isOpen || !folder) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-almet-cloud-burst rounded-xl shadow-2xl max-w-md w-full">
+        <div className="p-4">
+          <h2 className="text-base font-bold text-almet-cloud-burst dark:text-white mb-4">
+            Edit Folder
+          </h2>
+
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div>
+              <label className="block text-[11px] font-semibold text-almet-cloud-burst dark:text-white mb-1">
+                Folder Name *
+              </label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full px-3 py-1.5 rounded-lg border border-almet-mystic dark:border-almet-san-juan bg-white dark:bg-almet-san-juan/20 text-almet-cloud-burst dark:text-white text-[11px] focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-almet-cloud-burst dark:text-white mb-1">
+                Description
+              </label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                rows={2}
+                className="w-full px-3 py-1.5 rounded-lg border border-almet-mystic dark:border-almet-san-juan bg-white dark:bg-almet-san-juan/20 text-almet-cloud-burst dark:text-white text-[11px] focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <div>
+                <label className="block text-[11px] font-semibold text-almet-cloud-burst dark:text-white mb-1">
+                  Icon (Emoji)
+                </label>
+                <input
+                  type="text"
+                  value={formData.icon}
+                  onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
+                  className="w-full px-3 py-1.5 rounded-lg border border-almet-mystic dark:border-almet-san-juan bg-white dark:bg-almet-san-juan/20 text-almet-cloud-burst dark:text-white text-[11px] focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
+                  maxLength={2}
+                />
+              </div>
+              <div>
+                <label className="block text-[11px] font-semibold text-almet-cloud-burst dark:text-white mb-1">
+                  Order
+                </label>
+                <input
+                  type="number"
+                  value={formData.order}
+                  onChange={(e) => setFormData({ ...formData, order: parseInt(e.target.value) || 0 })}
+                  className="w-full px-3 py-1.5 rounded-lg border border-almet-mystic dark:border-almet-san-juan bg-white dark:bg-almet-san-juan/20 text-almet-cloud-burst dark:text-white text-[11px] focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
+                  min={0}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 px-3 py-1.5 rounded-lg border border-almet-mystic dark:border-almet-san-juan text-almet-cloud-burst dark:text-white hover:bg-almet-mystic/30 dark:hover:bg-almet-san-juan/30 transition-all text-[11px] font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={updating}
+                className="flex-1 px-3 py-1.5 rounded-lg bg-almet-sapphire text-white hover:bg-almet-astral transition-all text-[11px] font-semibold disabled:opacity-50"
+              >
+                {updating ? 'Updating...' : 'Update'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+
+
+const FolderCard = ({ folder, onDelete, onEdit }) => (
   <Link href={`/workspace/library/folder/${folder.id}`}>
     <div className="bg-white dark:bg-almet-cloud-burst rounded-lg p-3 shadow-sm border border-almet-mystic/50 dark:border-almet-san-juan/50 transition-all duration-200 hover:shadow-md hover:-translate-y-0.5 group cursor-pointer">
       <div className="flex items-start justify-between mb-2">
@@ -28,16 +166,28 @@ const FolderCard = ({ folder, onDelete }) => (
           </div>
         </div>
         
-        <button
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onDelete(folder);
-          }}
-          className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/10 text-red-600 dark:text-red-400 transition-all"
-        >
-          <Trash2 className="h-3 w-3" />
-        </button>
+        <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onEdit(folder);
+            }}
+            className="p-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/10 text-blue-600 dark:text-blue-400 transition-all"
+          >
+            <Edit className="h-3 w-3" />
+          </button>
+          <button
+            onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              onDelete(folder);
+            }}
+            className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/10 text-red-600 dark:text-red-400 transition-all"
+          >
+            <Trash2 className="h-3 w-3" />
+          </button>
+        </div>
       </div>
       
       {folder.description && (
@@ -225,7 +375,13 @@ export default function CompanyDocumentsPage() {
   const [folders, setFolders] = useState([]);
   const [recentDocs, setRecentDocs] = useState([]);
   const [createFolderModalOpen, setCreateFolderModalOpen] = useState(false);
+  const [editFolderModalOpen, setEditFolderModalOpen] = useState(false);
+const [selectedFolder, setSelectedFolder] = useState(null);
 
+const handleEditFolder = (folder) => {
+  setSelectedFolder(folder);
+  setEditFolderModalOpen(true);
+};
   const textPrimary = darkMode ? "text-white" : "text-almet-cloud-burst";
   const textSecondary = darkMode ? "text-almet-bali-hai" : "text-almet-waterloo";
 
@@ -346,12 +502,14 @@ export default function CompanyDocumentsPage() {
           {folders.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {folders.map((folder) => (
-                <FolderCard
-                  key={folder.id}
-                  folder={folder}
-                  onDelete={handleDeleteFolder}
-                />
-              ))}
+  <FolderCard
+    key={folder.id}
+    folder={folder}
+    onDelete={handleDeleteFolder}
+    onEdit={handleEditFolder}
+  />
+))}
+
             </div>
           ) : (
             <div className="text-center py-12 bg-white dark:bg-almet-cloud-burst rounded-lg border border-dashed border-almet-mystic dark:border-almet-san-juan">
@@ -385,7 +543,16 @@ export default function CompanyDocumentsPage() {
           </div>
         )}
       </div>
-
+<EditFolderModal
+  isOpen={editFolderModalOpen}
+  onClose={() => {
+    setEditFolderModalOpen(false);
+    setSelectedFolder(null);
+  }}
+  companyId={companyId} 
+  folder={selectedFolder}
+  onSuccess={loadData}
+/>
       <CreateFolderModal
         isOpen={createFolderModalOpen}
         onClose={() => setCreateFolderModalOpen(false)}

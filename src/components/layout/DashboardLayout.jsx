@@ -3,10 +3,9 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../common/Sidebar";
 import Header from "../common/Header";
-import ProtectedRoute from "../auth/ProtectedRoute"; // Qorunan Route komponentini əlavə edin
+import ProtectedRoute from "../auth/ProtectedRoute";
 
 const DashboardLayout = ({ children }) => {
-  // Use state to track sidebar visibility and collapse state
   const [isSidebarOpen, setSidebarOpen] = useState(true);
   const [isSidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
@@ -46,7 +45,7 @@ const DashboardLayout = ({ children }) => {
   }, []);
 
   return (
-    <ProtectedRoute> {/* Qorunan Route ilə əhatə edin */}
+    <ProtectedRoute>
       <div className="flex h-screen overflow-hidden">
         {/* Sidebar - with both mobile and desktop behavior */}
         <aside 
@@ -58,7 +57,10 @@ const DashboardLayout = ({ children }) => {
             ${!isMobile && isSidebarCollapsed ? 'w-16' : 'w-52'}
           `}
         >
-          <Sidebar collapsed={!isMobile && isSidebarCollapsed} />
+          <Sidebar 
+            collapsed={!isMobile && isSidebarCollapsed}
+            toggleSidebar={toggleSidebar}
+          />
         </aside>
 
         {/* Overlay for mobile when sidebar is open */}
@@ -71,12 +73,8 @@ const DashboardLayout = ({ children }) => {
 
         {/* Main content */}
         <div className="flex-1 flex flex-col overflow-hidden bg-almet-mystic dark:bg-gray-900">
-          {/* Pass toggleSidebar function to Header */}
-          <Header 
-            toggleSidebar={toggleSidebar} 
-            isMobile={isMobile}
-            isSidebarCollapsed={isSidebarCollapsed} 
-          />
+          {/* Header artıq toggleSidebar funksiyasına ehtiyac yoxdur */}
+          <Header />
           
           {/* Main content area */}
           <main className="flex-1 overflow-y-auto p-4">

@@ -2,9 +2,9 @@
 
 "use client";
 import { 
-  Search, Grid, List, Building2, Folder, FileText,
+  Search, Building2, Folder, FileText,
   Download, Eye, Plus, Shield, ClipboardList,
-  BookOpen, ArrowRight, Trash2
+  BookOpen, Trash2,Edit
 } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useState, useEffect } from "react";
@@ -41,7 +41,138 @@ const QuickAccessCard = ({ title, description, href, icon: Icon, color, badge })
   </Link>
 );
 
-const CompanyCard = ({ company, onDelete }) => {
+// app/workspace/library/page.jsx
+
+const EditCompanyModal = ({ isOpen, onClose, company, onSuccess }) => {
+  const { showSuccess, showError } = useToast();
+  const [updating, setUpdating] = useState(false);
+  const [formData, setFormData] = useState({
+    name: '',
+    icon: '🏢',
+  });
+
+  useEffect(() => {
+    if (company) {
+      setFormData({
+        name: company.name,
+        icon: company.icon || '🏢'
+      });
+    }
+  }, [company]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setUpdating(true);
+      const code = company.code; // Keep existing code
+      await documentService.updateCompany(company.id, {
+        name: formData.name,
+        code: code,
+        icon: formData.icon
+      });
+      showSuccess('Company updated successfully!');
+      onSuccess();
+      onClose();
+    } catch (error) {
+      console.error('Update error:', error);
+      showError('Failed to update company: ' + error.message);
+    } finally {
+      setUpdating(false);
+    }
+  };
+
+  if (!isOpen || !company) return null;
+
+  // Don't allow editing auto-created companies
+  if (company.is_auto_created) {
+    return (
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="bg-white dark:bg-almet-cloud-burst rounded-xl shadow-2xl max-w-md w-full">
+          <div className="p-4">
+            <h2 className="text-base font-bold text-red-600 mb-2">
+              Cannot Edit Auto-Created Company
+            </h2>
+            <p className="text-[11px] text-almet-waterloo dark:text-almet-bali-hai mb-4">
+              This company is automatically created from BusinessFunction. Edit the BusinessFunction instead.
+            </p>
+            <button
+              onClick={onClose}
+              className="w-full px-3 py-1.5 rounded-lg bg-almet-sapphire text-white hover:bg-almet-astral transition-all text-[11px] font-semibold"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-white dark:bg-almet-cloud-burst rounded-xl shadow-2xl max-w-md w-full">
+        <div className="p-4">
+          <h2 className="text-base font-bold text-almet-cloud-burst dark:text-white mb-4">
+            Edit Company
+          </h2>
+
+          <form onSubmit={handleSubmit} className="space-y-3">
+            <div>
+              <label className="block text-[11px] font-semibold text-almet-cloud-burst dark:text-white mb-1">
+                Company Name *
+              </label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="w-full px-3 py-1.5 rounded-lg border border-almet-mystic dark:border-almet-san-juan bg-white dark:bg-almet-san-juan/20 text-almet-cloud-burst dark:text-white text-[11px] focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-[11px] font-semibold text-almet-cloud-burst dark:text-white mb-1">
+                Icon (Emoji)
+              </label>
+              <input
+                type="text"
+                value={formData.icon}
+                onChange={(e) => setFormData({ ...formData, icon: e.target.value })}
+                className="w-full px-3 py-1.5 rounded-lg border border-almet-mystic dark:border-almet-san-juan bg-white dark:bg-almet-san-juan/20 text-almet-cloud-burst dark:text-white text-[11px] focus:outline-none focus:ring-2 focus:ring-almet-sapphire"
+                maxLength={2}
+              />
+            </div>
+
+            <div className="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-2">
+              <p className="text-[9px] text-blue-700 dark:text-blue-400">
+                Code: <strong>{company.code}</strong> (cannot be changed)
+              </p>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex-1 px-3 py-1.5 rounded-lg border border-almet-mystic dark:border-almet-san-juan text-almet-cloud-burst dark:text-white hover:bg-almet-mystic/30 dark:hover:bg-almet-san-juan/30 transition-all text-[11px] font-semibold"
+              >
+                Cancel
+              </button>
+              <button
+                type="submit"
+                disabled={updating}
+                className="flex-1 px-3 py-1.5 rounded-lg bg-almet-sapphire text-white hover:bg-almet-astral transition-all text-[11px] font-semibold disabled:opacity-50"
+              >
+                {updating ? 'Updating...' : 'Update'}
+              </button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// CompanyCard-a edit button əlavə et
+const CompanyCard = ({ company, onDelete, onEdit }) => {
   const isAutoCreated = company.is_auto_created;
   
   return (
@@ -63,15 +194,26 @@ const CompanyCard = ({ company, onDelete }) => {
                   </span>
                 )}
                 {!isAutoCreated && (
-                  <button
-                    onClick={(e) => {
-                      e.preventDefault();
-                      onDelete(company);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-all"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </button>
+                  <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        onEdit(company);
+                      }}
+                      className="p-1 rounded hover:bg-blue-50 dark:hover:bg-blue-900/20 text-blue-600 dark:text-blue-400 transition-all"
+                    >
+                      <Edit className="h-3 w-3" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        onDelete(company);
+                      }}
+                      className="p-1 rounded hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 transition-all"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
@@ -91,6 +233,9 @@ const CompanyCard = ({ company, onDelete }) => {
     </div>
   );
 };
+
+
+
 
 const QuickStatCard = ({ title, value, icon: Icon, color }) => (
   <div className="bg-white dark:bg-almet-cloud-burst rounded-lg p-3 shadow-sm border border-almet-mystic/50 dark:border-almet-san-juan/50">
@@ -284,6 +429,14 @@ export default function DocumentLibrary() {
   useEffect(() => {
     loadData();
   }, []);
+// State və handlers
+const [editCompanyModalOpen, setEditCompanyModalOpen] = useState(false);
+const [selectedCompany, setSelectedCompany] = useState(null);
+
+const handleEditCompany = (company) => {
+  setSelectedCompany(company);
+  setEditCompanyModalOpen(true);
+};
 
   const loadData = async () => {
     try {
@@ -418,11 +571,15 @@ export default function DocumentLibrary() {
           {companies.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
               {companies.map((company) => (
-                <CompanyCard 
-                  key={company.id} 
-                  company={company}
-                  onDelete={handleDeleteCompany}
-                />
+                // Render
+<CompanyCard 
+  key={company.id} 
+  company={company}
+  onDelete={handleDeleteCompany}
+  onEdit={handleEditCompany}
+/>
+
+
               ))}
             </div>
           ) : (
@@ -461,6 +618,16 @@ export default function DocumentLibrary() {
         onClose={() => setCreateCompanyModalOpen(false)}
         onSuccess={loadData}
       />
+
+      <EditCompanyModal
+  isOpen={editCompanyModalOpen}
+  onClose={() => {
+    setEditCompanyModalOpen(false);
+    setSelectedCompany(null);
+  }}
+  company={selectedCompany}
+  onSuccess={loadData}
+/>
     </DashboardLayout>
   );
 }

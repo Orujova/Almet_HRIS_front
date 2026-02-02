@@ -29,7 +29,7 @@ import {
 } from "lucide-react";
 import { employeeService } from '@/services/newsService';
 
-const Sidebar = ({ collapsed = false }) => {
+const Sidebar = ({ collapsed = false, toggleSidebar }) => {
   const pathname = usePathname();
   const router = useRouter();
   const [employeeId, setEmployeeId] = useState(null);
@@ -260,7 +260,7 @@ const Sidebar = ({ collapsed = false }) => {
         icon: <BookOpen className="w-4 h-4" />,
         path: "/workspace/library/guidelines",
         id: "guidelines",
-        isHighlighted: true // Special flag for red styling
+        isHighlighted: true
       },
       { 
         type: "section", 
@@ -293,7 +293,7 @@ const Sidebar = ({ collapsed = false }) => {
   const menuItems = getFilteredMenuItems();
 
   return (
-    <div className="h-full bg-white dark:bg-almet-cloud-burst border-r border-gray-200 dark:border-almet-comet flex flex-col w-full">
+    <div className="h-full bg-white dark:bg-almet-cloud-burst border-r border-gray-200 dark:border-almet-comet flex flex-col w-full relative">
   
       <Link 
         href="/" 
@@ -309,6 +309,25 @@ const Sidebar = ({ collapsed = false }) => {
           </div>
         )}
       </Link>
+
+      {/* Collapse Toggle Button */}
+      <button
+        onClick={toggleSidebar}
+        className="absolute -right-3 top-1/2 transform -translate-y-1/2 z-50
+          w-6 h-6 rounded-full bg-white dark:bg-almet-cloud-burst
+          border-2 border-almet-sapphire dark:border-almet-steel-blue
+          flex items-center justify-center
+          hover:scale-110 transition-all duration-300
+          shadow-md hover:shadow-lg"
+        aria-label="Toggle sidebar"
+      >
+        <ChevronRight 
+          size={16} 
+          className={`text-almet-sapphire dark:text-almet-steel-blue transition-transform duration-300 ${
+            collapsed ? '' : 'rotate-180'
+          }`}
+        />
+      </button>
       
       <div className="overflow-y-auto flex-1 py-0 scrollbar-thin scrollbar-track-transparent">
         <nav className="px-2">

@@ -172,7 +172,7 @@ const VacationTrackerCard = ({ darkMode }) => {
       
       <Link href="/requests/vacation">
         <button className="w-full bg-almet-sapphire hover:bg-almet-astral text-white font-semibold py-2 rounded-lg text-[10px] transition-all">
-          + Request Time Off
+          + Vacation Request 
         </button>
       </Link>
     </div>

@@ -249,7 +249,8 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     setSorting
   ]);
 
-  const handleColorModeChange = useCallback((newMode) => {
+  // In HeadcountTable.jsx, update the handleColorModeChange function
+const handleColorModeChange = useCallback((newMode) => {
   if (newMode === currentColorMode) return;
   
   // ✅ CRITICAL: Save wrapper filter BEFORE clearing anything
@@ -304,25 +305,33 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
   // 🎯 BUILD API PARAMS - Convert to backend format
   // ========================================
   const buildApiParams = useCallback(() => {
-    const params = {
-      page: pagination.page || 1,
-      page_size: pagination.pageSize || 25
-    };
+  const params = {
+    page: pagination.page || 1,
+    page_size: pagination.pageSize || 25
+  };
 
-    if (localFilters.search?.trim()) {
-      params.search = localFilters.search.trim();
-    }
-
-    if (sorting && sorting.length > 0) {
-      const orderingFields = sorting.map(sort => 
-        sort.direction === 'desc' ? `-${sort.field}` : sort.field
-      );
-      params.ordering = orderingFields.join(',');
-    }
-if (isWrapperFilterApplied && localFilters.business_function.length > 0) {
+  // ✅ CRITICAL: Always preserve wrapper filter FIRST
+  if (isWrapperFilterApplied && localFilters.business_function.length > 0) {
     params.business_function = localFilters.business_function.join(',');
     console.log('🔒 Wrapper filter enforced in buildApiParams:', params.business_function);
   }
+
+  if (localFilters.search?.trim()) {
+    params.search = localFilters.search.trim();
+  }
+
+  if (sorting && sorting.length > 0) {
+    const orderingFields = sorting.map(sort => 
+      sort.direction === 'desc' ? `-${sort.field}` : sort.field
+    );
+    params.ordering = orderingFields.join(',');
+  }
+
+
+   
+
+ 
+
     const multiSelectFilters = [
       'business_function', 'department', 'unit', 'job_function', 'position_group',
       'status', 'grading_level', 'contract_duration', 'line_manager', 'tags', 'gender', 'employee_search'
@@ -378,7 +387,7 @@ if (isWrapperFilterApplied && localFilters.business_function.length > 0) {
     
     
     return params;
-  }, [localFilters, pagination.page, pagination.pageSize, sorting]);
+  }, [localFilters, pagination.page, pagination.pageSize, sorting, isWrapperFilterApplied]);
 
   const apiParamsChanged = useMemo(() => {
     if (!lastApiParamsRef.current) {
@@ -531,8 +540,8 @@ if (isWrapperFilterApplied && localFilters.business_function.length > 0) {
     showError
   ]);
 
-  // ✅ DATA FETCHING EFFECT - Only after initialization
-  // ✅ DATA FETCHING EFFECT - Only after initialization
+
+// In HeadcountTable.jsx, update the data fetching useEffect
 useEffect(() => {
   if (!initialized.current) {
     return;
@@ -544,15 +553,20 @@ useEffect(() => {
 
   const params = buildApiParams();
   
-  // ✅ CRITICAL: Preserve wrapper filter during pagination
+  // ✅ CRITICAL: Double-check wrapper filter is included
   if (isWrapperFilterApplied && localFilters.business_function.length > 0) {
-    // Ensure business_function is always included in params
     params.business_function = localFilters.business_function.join(',');
     console.log('🔒 Preserving wrapper filter in API call:', params.business_function);
   }
 
   debouncedFetchEmployees(params);
-}, [apiParamsChanged, buildApiParams, debouncedFetchEmployees, isWrapperFilterApplied, localFilters.business_function]);
+}, [
+  apiParamsChanged, 
+  buildApiParams, 
+  debouncedFetchEmployees, 
+  isWrapperFilterApplied, 
+  localFilters.business_function
+]);
 
   const refreshAllData = useCallback(async (forceRefresh = false) => {
     try {
@@ -614,14 +628,12 @@ useEffect(() => {
   // 🎯 FILTER HANDLERS
   // ========================================
   const handleSearchChange = useCallback((value) => {
-  setLocalFilters(prev => {
+  setLocalFilters(prev => ({
+    ...prev,
+    search: value,
     // ✅ Preserve business_function filter
-    return {
-      ...prev,
-      search: value,
-      business_function: isWrapperFilterApplied ? prev.business_function : []
-    };
-  });
+    business_function: isWrapperFilterApplied ? prev.business_function : prev.business_function
+  }));
   setCurrentPage(1);
 }, [setCurrentPage, isWrapperFilterApplied]);
 
@@ -629,7 +641,8 @@ const handleStatusChange = useCallback((selectedStatuses) => {
   setLocalFilters(prev => ({
     ...prev,
     status: Array.isArray(selectedStatuses) ? selectedStatuses : [],
-    business_function: isWrapperFilterApplied ? prev.business_function : [] // ✅ Preserve
+    // ✅ Preserve business_function filter
+    business_function: isWrapperFilterApplied ? prev.business_function : prev.business_function
   }));
   setCurrentPage(1);
 }, [setCurrentPage, isWrapperFilterApplied]);
