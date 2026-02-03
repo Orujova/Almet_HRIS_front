@@ -182,7 +182,6 @@ export default function PlanningCalendar({
     }
   };
 
-// components/vacation/PlanningCalendar.jsx - CORRECT LOGIC
 
 const handleMouseUp = () => {
   if (isDragging && dragStart && dragEnd) {

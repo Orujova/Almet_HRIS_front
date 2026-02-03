@@ -69,7 +69,7 @@ useEffect(() => {
               value={editingSchedule.start_date}
               onChange={(e) => setEditingSchedule(prev => ({...prev, start_date: e.target.value}))}
               min={new Date().toISOString().split('T')[0]}
-              className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white"
+              className="w-full px-3 py-2.5 text-sm border outline-0 focus:outline-none border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white"
             />
           </div>
 
@@ -82,7 +82,7 @@ useEffect(() => {
               value={editingSchedule.end_date}
               onChange={(e) => setEditingSchedule(prev => ({...prev, end_date: e.target.value}))}
               min={editingSchedule.start_date}
-              className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white"
+              className="w-full px-3 py-2.5 text-sm border focus:outline-none   outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white"
             />
           </div>
 
@@ -95,7 +95,7 @@ useEffect(() => {
               onChange={(e) => setEditingSchedule(prev => ({...prev, comment: e.target.value}))}
               rows={3}
               placeholder="Add any notes..."
-              className="w-full px-3 py-2.5 text-sm border outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white resize-none"
+              className="w-full px-3 py-2.5 text-sm border focus:outline-none  outline-0 border-almet-bali-hai/40 dark:border-almet-comet rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent dark:bg-gray-700 dark:text-white resize-none"
             />
           </div>
         </div>
