@@ -1,6 +1,6 @@
 "use client";
 import { useState, useEffect } from 'react';
-import { Plane, ChevronDown, ChevronUp, Send, CheckCircle, XCircle, Clock, Calendar, DollarSign, Settings, Lock, Download, FileText, Users, History, Filter, X, Paperclip } from 'lucide-react';
+import { Plane, ChevronDown, ChevronUp, Edit,Send, CheckCircle, XCircle, Clock, Calendar, DollarSign, Settings, Lock, Download, FileText, Users, History, Filter, X, Paperclip, Trash, Eye } from 'lucide-react';
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useTheme } from "@/components/common/ThemeProvider";
 import { useToast } from "@/components/common/Toast";
@@ -230,8 +230,7 @@ const [selectedRequestForDetail, setSelectedRequestForDetail] = useState(null);
       // Switch to request tab
       setActiveTab('request');
       setExpandedSection('travel');
-      
-      showSuccess('Request loaded for editing');
+
     } catch (error) {
       console.error('Error loading request for edit:', error);
       showError('Failed to load request');
@@ -1319,7 +1318,7 @@ const handleOpenRequestDetail = (request) => {
                       onClick={() => handleOpenRequestDetail(request)}
                       className="text-xs text-almet-sapphire hover:text-almet-cloud-burst font-medium"
                     >
-                      View
+                      <Eye className='w-3.5 h-3.5' />
                     </button>
                     
                     {/* ✅ NEW: Edit Button */}
@@ -1328,7 +1327,7 @@ const handleOpenRequestDetail = (request) => {
                         onClick={() => handleEditRequest(request)}
                         className="text-xs text-blue-600 hover:text-blue-700 font-medium"
                   >
-                    Edit
+                    <Edit className='w-3.5 h-3.5' />
                   </button>
                 )}
                 
@@ -1338,7 +1337,7 @@ const handleOpenRequestDetail = (request) => {
                     onClick={() => handleDeleteRequest(request)}
                     className="text-xs text-red-600 hover:text-red-700 font-medium"
                   >
-                    Delete
+                    <Trash className='w-3.5 h-3.5' />
                   </button>
                 )}
               </div>
@@ -1730,200 +1729,221 @@ const handleOpenRequestDetail = (request) => {
           </div>
         )}
 
-        {/* All Requests Tab with Pagination */}
-        {activeTab === 'all' && (
-          <div className="space-y-5">
-            <div className="bg-white dark:bg-gray-800 rounded-xl border border-almet-mystic/30 dark:border-almet-comet/30 shadow-sm overflow-hidden">
-              <div className="bg-gradient-to-r from-almet-sapphire/5 to-transparent dark:from-almet-sapphire/10 px-6 py-4 border-b border-almet-mystic/30 dark:border-almet-comet/30 flex items-center justify-between">
-                <h2 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">All Requests</h2>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => setShowFilters(!showFilters)}
-                    className="flex items-center gap-1.5 px-3 py-2 text-xs bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all shadow-sm font-medium"
-                  >
-                    <Filter className="w-3.5 h-3.5" />
-                    {showFilters ? 'Hide' : 'Show'} Filters
-                  </button>
-                  {canExportAll && (
-                    <button 
-                      onClick={handleExportAllTrips} 
-                      className="px-3 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center gap-1.5 shadow-sm font-medium"
-                    >
-                      <Download className="w-3 h-3" />
-                      Export All
-                    </button>
-                  )}
-                </div>
-              </div>
 
-              {/* Filters */}
-              {showFilters && (
-                <div className="px-6 py-4 bg-almet-mystic/10 dark:bg-gray-900/20 border-b border-almet-mystic/30 dark:border-almet-comet/30">
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-                    <div>
-                      <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Status</label>
-                      <select
-                        value={filters.status}
-                        onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-                        className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
-                      >
-                        <option value="">All Status</option>
-                        <option value="SUBMITTED">Submitted</option>
-                        <option value="PENDING_LINE_MANAGER">Pending Line Manager</option>
-                        <option value="PENDING_FINANCE">Pending Finance</option>
-                        <option value="PENDING_HR">Pending HR</option>
-                        <option value="APPROVED">Approved</option>
-                        <option value="REJECTED_LINE_MANAGER">Rejected by Line Manager</option>
-                        <option value="REJECTED_FINANCE">Rejected by Finance</option>
-                        <option value="REJECTED_HR">Rejected by HR</option>
-                        <option value="CANCELLED">Cancelled</option>
-                      </select>
-                    </div>
 
-                    <div>
-                      <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Employee</label>
-                      <input
-                        type="text"
-                        value={filters.employee}
-                        onChange={(e) => setFilters(prev => ({ ...prev, employee: e.target.value }))}
-                        placeholder="Search employee"
-                        className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
-                      />
-                    </div>
+{activeTab === 'all' && (
+  <div className="space-y-5">
+    <div className="bg-white dark:bg-gray-800 rounded-xl border border-almet-mystic/30 dark:border-almet-comet/30 shadow-sm overflow-hidden">
+      <div className="bg-gradient-to-r from-almet-sapphire/5 to-transparent dark:from-almet-sapphire/10 px-6 py-4 border-b border-almet-mystic/30 dark:border-almet-comet/30 flex items-center justify-between">
+        <h2 className="text-sm font-semibold text-almet-cloud-burst dark:text-white">All Requests</h2>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs bg-almet-sapphire text-white rounded-lg hover:bg-almet-cloud-burst transition-all shadow-sm font-medium"
+          >
+            <Filter className="w-3.5 h-3.5" />
+            {showFilters ? 'Hide' : 'Show'} Filters
+          </button>
+          {canExportAll && (
+            <button 
+              onClick={handleExportAllTrips} 
+              className="px-3 py-2 text-xs bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all flex items-center gap-1.5 shadow-sm font-medium"
+            >
+              <Download className="w-3 h-3" />
+              Export All
+            </button>
+          )}
+        </div>
+      </div>
 
-                    <div>
-                      <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Department</label>
-                      <input
-                        type="text"
-                        value={filters.department}
-                        onChange={(e) => setFilters(prev => ({ ...prev, department: e.target.value }))}
-                        placeholder="Search department"
-                        className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
-                      />
-                    </div>
+      {/* Filters */}
+      {showFilters && (
+        <div className="px-6 py-4 bg-almet-mystic/10 dark:bg-gray-900/20 border-b border-almet-mystic/30 dark:border-almet-comet/30">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Status</label>
+              <select
+                value={filters.status}
+                onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
+                className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+              >
+                <option value="">All Status</option>
+                <option value="SUBMITTED">Submitted</option>
+                <option value="PENDING_LINE_MANAGER">Pending Line Manager</option>
+                <option value="PENDING_FINANCE">Pending Finance</option>
+                <option value="PENDING_HR">Pending HR</option>
+                <option value="APPROVED">Approved</option>
+                <option value="REJECTED_LINE_MANAGER">Rejected by Line Manager</option>
+                <option value="REJECTED_FINANCE">Rejected by Finance</option>
+                <option value="REJECTED_HR">Rejected by HR</option>
+                <option value="CANCELLED">Cancelled</option>
+              </select>
+            </div>
 
-                    <div>
-                      <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Date From</label>
-                      <input
-                        type="date"
-                        value={filters.dateFrom}
-                        onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
-                        className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
-                      />
-                    </div>
+            <div>
+              <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Employee</label>
+              <input
+                type="text"
+                value={filters.employee}
+                onChange={(e) => setFilters(prev => ({ ...prev, employee: e.target.value }))}
+                placeholder="Search employee"
+                className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+              />
+            </div>
 
-                    <div>
-                      <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Date To</label>
-                      <input
-                        type="date"
-                        value={filters.dateTo}
-                        onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
-                        className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
-                      />
-                    </div>
-                  </div>
+            <div>
+              <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Department</label>
+              <input
+                type="text"
+                value={filters.department}
+                onChange={(e) => setFilters(prev => ({ ...prev, department: e.target.value }))}
+                placeholder="Search department"
+                className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+              />
+            </div>
 
-                  <div className="mt-3 flex justify-end">
-                    <button
-                      onClick={clearFilters}
-                      className="px-3 py-1.5 text-xs text-red-600 hover:text-white hover:bg-red-600 dark:text-red-400 border border-red-200 dark:border-red-700 rounded-lg transition-all flex items-center gap-1.5"
-                    >
-                      <X className="w-3.5 h-3.5" />
-                      Clear Filters
-                    </button>
-                  </div>
-                </div>
-              )}
-              
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-almet-mystic/20 dark:divide-almet-comet/20">
-                  <thead className="bg-almet-mystic/30 dark:bg-gray-700/30">
-                    <tr>
-                      {['Request ID', 'Employee', 'Department', 'Type',  'Start', 'End', 'Days', 'Status', 'Amount', 'Files', 'Actions'].map(h => (
-                        <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-almet-comet dark:text-almet-bali-hai uppercase tracking-wide">
-                          {h}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="bg-white dark:bg-gray-800 divide-y divide-almet-mystic/10 dark:divide-almet-comet/10">
-                    {paginatedAllRequests.map(request => (
-                      <tr key={request.id} className="hover:bg-almet-mystic/10 dark:hover:bg-gray-700/20 transition-colors">
-                        <td className="px-4 py-3 text-xs font-medium text-almet-cloud-burst dark:text-white">{request.request_id}</td>
-                        <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{request.employee_name}</td>
-                        <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{request.department_name}</td>
-                        <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{request.travel_type_name}</td>
-                      
-                        <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{request.start_date}</td>
-                        <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{request.end_date}</td>
-                        <td className="px-4 py-3 text-xs font-semibold text-almet-cloud-burst dark:text-white">{request.number_of_days}</td>
-                        <td className="px-4 py-3">
-                          <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
-                            request.status === 'APPROVED' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
-                            request.status.includes('PENDING') ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' :
-                            request.status.includes('REJECTED') ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
-                            'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300'
-                          }`}>
-                            {request.status_display}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">
-                          {request.finance_amount ? `${request.finance_amount} AZN` : '-'}
-                        </td>
-                        <td className="px-4 py-3">
-                          <button
-                            onClick={() => handleOpenAttachments(request)}
-                            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-almet-sapphire hover:bg-almet-sapphire/10 dark:hover:bg-almet-sapphire/20 rounded-lg transition-all"
-                          >
-                            <Paperclip className="w-3.5 h-3.5" />
-                            <span>{request.attachments_count || 0}</span>
-                          </button>
-                        </td>
-                            <td className="px-4 py-3">
-                          {/* <button
-                            onClick={() => handleOpenAttachments(request)}
-                            className="text-xs text-almet-sapphire hover:text-almet-cloud-burst font-medium"
-                          >
-                            View
-                          </button> */}
-                              <button
-      onClick={() => handleOpenRequestDetail(request)}
-      className="text-xs text-almet-sapphire hover:text-almet-cloud-burst font-medium"
-    >
-      View Details
-    </button>
-                        </td>
-                      </tr>
-                    ))}
-                    {paginatedAllRequests.length === 0 && (
-                      <tr>
-                        <td colSpan="12" className="px-4 py-12 text-center">
-                          <FileText className="w-10 h-10 text-almet-waterloo/30 dark:text-almet-bali-hai/30 mx-auto mb-3" />
-                          <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">No requests found</p>
-                          <p className="text-xs text-almet-waterloo/70 dark:text-almet-bali-hai/70 mt-1">Try adjusting your filters</p>
-                        </td>
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
+            <div>
+              <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Date From</label>
+              <input
+                type="date"
+                value={filters.dateFrom}
+                onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
+                className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+              />
+            </div>
 
-              {/* Pagination for All Requests */}
-              {filteredRequests.length > itemsPerPage && (
-                <div className="p-4 border-t border-almet-mystic/20 dark:border-almet-comet/20">
-                  <Pagination
-                    currentPage={allRequestsPage}
-                    totalPages={getTotalPages(filteredRequests.length)}
-                    totalItems={filteredRequests.length}
-                    itemsPerPage={itemsPerPage}
-                    onPageChange={setAllRequestsPage}
-                    darkMode={darkMode}
-                  />
-                </div>
-              )}
+            <div>
+              <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">Date To</label>
+              <input
+                type="date"
+                value={filters.dateTo}
+                onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
+                className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+              />
             </div>
           </div>
-        )}
+
+          <div className="mt-3 flex justify-end">
+            <button
+              onClick={clearFilters}
+              className="px-3 py-1.5 text-xs text-red-600 hover:text-white hover:bg-red-600 dark:text-red-400 border border-red-200 dark:border-red-700 rounded-lg transition-all flex items-center gap-1.5"
+            >
+              <X className="w-3.5 h-3.5" />
+              Clear Filters
+            </button>
+          </div>
+        </div>
+      )}
+      
+      <div className="overflow-x-auto">
+        <table className="min-w-full divide-y divide-almet-mystic/20 dark:divide-almet-comet/20">
+          <thead className="bg-almet-mystic/30 dark:bg-gray-700/30">
+            <tr>
+              {['Request ID', 'Employee', 'Department', 'Type', 'Start', 'End', 'Days', 'Status', 'Amount', 'Files', 'Actions'].map(h => (
+                <th key={h} className="px-4 py-3 text-left text-xs font-semibold text-almet-comet dark:text-almet-bali-hai uppercase tracking-wide">
+                  {h}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody className="bg-white dark:bg-gray-800 divide-y divide-almet-mystic/10 dark:divide-almet-comet/10">
+            {paginatedAllRequests.map(request => (
+              <tr key={request.id} className="hover:bg-almet-mystic/10 dark:hover:bg-gray-700/20 transition-colors">
+                <td className="px-4 py-3 text-xs font-medium text-almet-cloud-burst dark:text-white">{request.request_id}</td>
+                <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{request.employee_name}</td>
+                <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{request.department_name}</td>
+                <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{request.travel_type_name}</td>
+                <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{request.start_date}</td>
+                <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">{request.end_date}</td>
+                <td className="px-4 py-3 text-xs font-semibold text-almet-cloud-burst dark:text-white">{request.number_of_days}</td>
+                <td className="px-4 py-3">
+                  <span className={`px-2.5 py-1 text-xs font-medium rounded-full ${
+                    request.status === 'APPROVED' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300' :
+                    request.status.includes('PENDING') ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300' :
+                    request.status.includes('REJECTED') ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300' :
+                    'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-300'
+                  }`}>
+                    {request.status_display}
+                  </span>
+                </td>
+                <td className="px-4 py-3 text-xs text-almet-waterloo dark:text-almet-bali-hai">
+                  {request.finance_amount ? `${request.finance_amount} AZN` : 
+                   request.initial_finance_amount ? (
+                     <span className="text-blue-600 dark:text-blue-400">
+                       Est: {request.initial_finance_amount} AZN
+                     </span>
+                   ) : '-'}
+                </td>
+                <td className="px-4 py-3">
+                  <button
+                    onClick={() => handleOpenAttachments(request)}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs text-almet-sapphire hover:bg-almet-sapphire/10 dark:hover:bg-almet-sapphire/20 rounded-lg transition-all"
+                  >
+                    <Paperclip className="w-3.5 h-3.5" />
+                    <span>{request.attachments_count || 0}</span>
+                  </button>
+                </td>
+                <td className="px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleOpenRequestDetail(request)}
+                      className="text-xs text-almet-sapphire hover:text-almet-cloud-burst font-medium"
+                    >
+                      <Eye className='w-3.5 h-3.5' />
+                    </button>
+                    
+                    {/* ✅ NEW: Edit Button for All Requests */}
+                    {BusinessTripHelpers.canEditRequest(request, userPermissions, currentUserId) && (
+                      <button
+                        onClick={() => handleEditRequest(request)}
+                        className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+                      >
+                        <Edit className='w-3.5 h-3.5' />
+                      </button>
+                    )}
+                    
+                    {/* ✅ NEW: Delete Button for All Requests */}
+                    {BusinessTripHelpers.canDeleteRequest(request, userPermissions, currentUserId) && (
+                      <button
+                        onClick={() => handleDeleteRequest(request)}
+                        className="text-xs text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 font-medium"
+                      >
+                       <Trash className='w-3.5 h-3.5' />
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            ))}
+            {paginatedAllRequests.length === 0 && (
+              <tr>
+                <td colSpan="11" className="px-4 py-12 text-center">
+                  <FileText className="w-10 h-10 text-almet-waterloo/30 dark:text-almet-bali-hai/30 mx-auto mb-3" />
+                  <p className="text-xs text-almet-waterloo dark:text-almet-bali-hai">No requests found</p>
+                  <p className="text-xs text-almet-waterloo/70 dark:text-almet-bali-hai/70 mt-1">Try adjusting your filters</p>
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Pagination for All Requests */}
+      {filteredRequests.length > itemsPerPage && (
+        <div className="p-4 border-t border-almet-mystic/20 dark:border-almet-comet/20">
+          <Pagination
+            currentPage={allRequestsPage}
+            totalPages={getTotalPages(filteredRequests.length)}
+            totalItems={filteredRequests.length}
+            itemsPerPage={itemsPerPage}
+            onPageChange={setAllRequestsPage}
+            darkMode={darkMode}
+          />
+        </div>
+      )}
+    </div>
+  </div>
+)}
       </div>
 
       {/* Modals */}
