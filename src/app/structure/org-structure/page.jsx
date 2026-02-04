@@ -213,7 +213,7 @@ const companyFilteredOrgChart = useMemo(() => {
                          emp.is_vacancy || 
                          emp.record_type === 'vacancy';
         
-   e
+   
         if (isVacancy) {
             return emp.business_function === selectedCompany;
         } else {
