@@ -7,7 +7,6 @@ import { useEmployees } from "../../hooks/useEmployees";
 import { useVacantPositions } from "../../hooks/useVacantPositions";
 import { useReferenceData } from "../../hooks/useReferenceData";
 import { useDispatch } from "react-redux";
-// Import tab content components
 import VacantPositionsTable from "./VacantPositionsTable";
 import ArchiveEmployeesTable from "./ArchiveEmployeesTable";
 import { archiveEmployeesService } from '../../services/vacantPositionsService';
@@ -30,7 +29,6 @@ import { employeeAPI } from '../../store/api/employeeAPI';
 const HeadcountTable = ({ businessFunctionFilter = null }) => {
   const { darkMode } = useTheme();
   const { showSuccess, showError, showWarning, showInfo } = useToast();
-  const dispatch = useDispatch();
   const [activeTab, setActiveTab] = useState('employees');
   
   const {
@@ -58,8 +56,6 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     bulkAddTags,
     bulkRemoveTags,
     bulkAssignLineManager,
-
-    exportEmployees,
     downloadEmployeeTemplate,
     showInOrgChart,
     hideFromOrgChart,
@@ -84,7 +80,6 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     employeeTags,
     units,
     jobFunctions,
-    contractConfigs,
     loading: refLoading,
     error: refError
   } = useReferenceData();
@@ -145,8 +140,8 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     years_of_service_max: "",
     is_active: "",
     is_visible_in_org_chart: "",
-    status_needs_update: "",
-    contract_expiring_days: ""
+  
+ 
   });
 
   // ========================================
@@ -297,7 +292,6 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     }
   }, [activeTab, fetchStatistics, fetchVacantPositionsStatistics, showError]);
 
-  // ✅ CRITICAL: buildApiParams uses LOCKED business_function from ref
   const buildApiParams = useCallback(() => {
 
     
@@ -369,13 +363,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     if (localFilters.is_visible_in_org_chart && localFilters.is_visible_in_org_chart !== "") {
       params.is_visible_in_org_chart = localFilters.is_visible_in_org_chart === "true";
     }
-    if (localFilters.status_needs_update && localFilters.status_needs_update !== "") {
-      params.status_needs_update = localFilters.status_needs_update === "true";
-    }
-
-    if (localFilters.contract_expiring_days) {
-      params.contract_expiring_days = parseInt(localFilters.contract_expiring_days);
-    }
+   
 
 
     return params;
@@ -402,7 +390,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
   }, [buildApiParams]);
 
   const debouncedFetchEmployees = useCallback((params, immediate = false) => {
-    // ✅ Cancel previous request
+
     if (abortControllerRef.current) {
       console.log('❌ Cancelling previous request');
       abortControllerRef.current.abort();
@@ -732,8 +720,8 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
       years_of_service_max: "",
       is_active: "",
       is_visible_in_org_chart: "",
-      status_needs_update: "",
-      contract_expiring_days: ""
+
+ 
     };
     
     setLocalFilters(clearedFilters);
@@ -1425,18 +1413,8 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
         label: `Org Chart: ${localFilters.is_visible_in_org_chart === "true" ? "Visible" : "Hidden"}`
       });
     }
-    if (localFilters.status_needs_update && localFilters.status_needs_update !== "") {
-      filters.push({ 
-        key: "status_needs_update", 
-        label: `Status Update: ${localFilters.status_needs_update === "true" ? "Needed" : "Not Needed"}`
-      });
-    }
-    if (localFilters.contract_expiring_days) {
-      filters.push({ 
-        key: "contract_expiring_days", 
-        label: `Contract expiring in ${localFilters.contract_expiring_days} days`
-      });
-    }
+ 
+
     
     return filters;
   }, [localFilters, isWrapperFilterApplied]);

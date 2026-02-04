@@ -254,7 +254,7 @@ const HeadcountWrapper = () => {
       activeEmployees: statistics?.active_employees || 0,
       inactiveEmployees: statistics?.inactive_employees || 0,
       recentHires: statistics?.recent_hires_30_days || 0,
-      contractEnding: statistics?.upcoming_contract_endings_30_days || 0,
+ 
       totalVacant: statistics?.total_vacant_positions || 0
     };
   }, [companyCards, statistics]);

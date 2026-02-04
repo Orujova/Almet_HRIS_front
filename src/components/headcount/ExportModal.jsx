@@ -55,7 +55,7 @@ const ExportModal = ({
     ],
     contract_info: [
       'contract_duration', 'contract_duration_display', 'contract_start_date', 'contract_end_date', 
-      'contract_extensions', 'last_extension_date', 'start_date', 'end_date'
+      'start_date', 'end_date'
     ],
     management_info: [
       'line_manager_name', 'line_manager_hc_number', 'direct_reports_count'
@@ -68,7 +68,7 @@ const ExportModal = ({
     ],
     status: [
       'status_name', 'status_color', 'is_visible_in_org_chart', 
-      'status_needs_update', 'current_status_display'
+      'current_status_display'
     ],
     dates: [
       'start_date', 'end_date', 'date_of_birth', 'years_of_service',

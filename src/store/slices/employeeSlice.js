@@ -192,26 +192,6 @@ export const bulkAssignLineManager = createAsyncThunk(
   }
 );
 
-// ========================================
-// CONTRACT MANAGEMENT
-// ========================================
-
-export const extendEmployeeContract = createAsyncThunk(
-  'employees/extendEmployeeContract',
-  async (data, { rejectWithValue }) => {
-    try {
-      const response = await employeeAPI.extendContract(data);
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.data || error.message);
-    }
-  }
-);
-
-
-
-
-
 
 export const uploadEmployeeProfilePhoto = createAsyncThunk(
   'employees/uploadProfilePhoto',
@@ -268,19 +248,16 @@ export const fetchEmployeeGrading = createAsyncThunk(
 );
 
 
-
-
 // ========================================
 // EXPORT & TEMPLATES
 // ========================================
 
-// Redux slice - exportEmployees thunk UPDATE
 
 export const exportEmployees = createAsyncThunk(
   'employees/exportEmployees',
   async ({ format = 'excel', params = {} }, { rejectWithValue }) => {
     try {
-      console.log('🎯 Redux exportEmployees thunk:', { format, params });
+ 
       
       const response = await employeeAPI.export({ 
         format, 
@@ -350,19 +327,6 @@ export const fetchEmployeeDirectReports = createAsyncThunk(
   }
 );
 
-export const fetchEmployeeStatusPreview = createAsyncThunk(
-  'employees/fetchEmployeeStatusPreview',
-  async (employeeId, { rejectWithValue }) => {
-    try {
-      const response = await employeeAPI.getStatusPreview(employeeId);
-      return { employeeId, statusPreview: response.data };
-    } catch (error) {
-      return rejectWithValue(error.data || error.message);
-    }
-  }
-);
-
-
 
 // ========================================
 // ADVANCED SEARCH - YENİ ASYNC THUNKS
@@ -408,7 +372,7 @@ const initialState = {
     by_position_group: {},
     by_contract_duration: {},
     recent_hires_30_days: 0,
-    upcoming_contract_endings_30_days: 0,
+  
     status_update_analysis: {
       employees_needing_updates: 0,
       status_transitions: {}
@@ -418,26 +382,8 @@ const initialState = {
   activities: {},
   directReports: {},
   statusPreviews: {},
-  contractExpiryAlerts: {
-    success: false,
-    days_ahead: 30,
-    total_expiring: 0,
-    urgent_employees: [],
-    all_employees: [],
-    urgency_breakdown: {},
-    department_breakdown: {},
-    line_manager_breakdown: {},
-    notification_recommendations: {
-      critical_contracts: [],
-      renewal_decisions_needed: [],
-      manager_notifications: []
-    }
-  },
-  contractsExpiringSoon: {
-    days: 30,
-    count: 0,
-    employees: []
-  },
+
+
 
   // Grading data
   gradingData: {
@@ -506,10 +452,6 @@ const initialState = {
       isActive: null,
       isOrgChartVisible: null,
       includeDeleted: false
-    },
-    specialFilters: {
-      needsStatusUpdate: null,
-      contractExpiringDays: null
     }
   },
   
@@ -536,10 +478,10 @@ const initialState = {
     statusUpdate: false,
     tagUpdate: false,
     lineManagerUpdate: false,
-    contractUpdate: false,
+  
     template: false,
     upload: false,
-    contractAlerts: false,
+
     orgChart: false,
     advancedSearch: false
   },
@@ -562,10 +504,10 @@ const initialState = {
     statusUpdate: null,
     tagUpdate: null,
     lineManagerUpdate: null,
-    contractUpdate: null,
+  
     template: null,
     upload: null,
-    contractAlerts: null,
+
     orgChart: null,
     advancedSearch: null
   },
@@ -854,7 +796,7 @@ const employeeSlice = createSlice({
         noManager: { line_manager: null },
         needsGrading: { grading_level: [] },
         newHires: { years_of_service_range: { min: 0, max: 0.25 } },
-        contractEnding: { contract_expiring_days: 30 },
+    
         orgChartVisible: { is_visible_in_org_chart: true },
         orgChartHidden: { is_visible_in_org_chart: false }
       };
@@ -1374,20 +1316,7 @@ const employeeSlice = createSlice({
         state.error.directReports = action.payload;
       });
 
-    builder
-      .addCase(fetchEmployeeStatusPreview.pending, (state) => {
-        state.loading.statusPreview = true;
-        state.error.statusPreview = null;
-      })
-      .addCase(fetchEmployeeStatusPreview.fulfilled, (state, action) => {
-        state.loading.statusPreview = false;
-        const { employeeId, statusPreview } = action.payload;
-        state.statusPreviews[employeeId] = statusPreview;
-      })
-      .addCase(fetchEmployeeStatusPreview.rejected, (state, action) => {
-        state.loading.statusPreview = false;
-        state.error.statusPreview = action.payload;
-      });
+   
   },
 });
 
@@ -1469,8 +1398,6 @@ export const selectViewMode = (state) => state.employees.viewMode;
 export const selectShowAdvancedFilters = (state) => state.employees.showAdvancedFilters;
 export const selectShowGradingPanel = (state) => state.employees.showGradingPanel;
 export const selectGradingMode = (state) => state.employees.gradingMode;
-export const selectContractExpiryAlerts = (state) => state.employees.contractExpiryAlerts;
-export const selectContractsExpiringSoon = (state) => state.employees.contractsExpiringSoon;
 export const selectSearchResults = (state) => state.employees.searchResults;
 export const selectLastSearchParams = (state) => state.employees.lastSearchParams;
 export const selectSearchPagination = (state) => state.employees.searchPagination;
@@ -1493,9 +1420,8 @@ export const selectFormattedEmployees = createSelector(
       duration: employee.contract_duration_display || employee.contract_duration,
       startDate: employee.contract_start_date || employee.start_date,
       endDate: employee.contract_end_date || employee.end_date,
-      isTemporary: employee.contract_duration !== 'PERMANENT',
-      extensions: employee.contract_extensions || 0,
-      lastExtension: employee.last_extension_date
+
+    
     },
     serviceInfo: {
       yearsOfService: employee.years_of_service || 0,
@@ -1527,7 +1453,7 @@ export const selectFormattedEmployees = createSelector(
       tagCount: (employee.tags || []).length
     },
     statusInfo: {
-      needsUpdate: employee.status_needs_update === true,
+     
       isActive: employee.status_name === 'ACTIVE' || employee.status_name === 'Active',
       isOnLeave: employee.status_name === 'ON_LEAVE',
       isOnboarding: employee.status_name === 'ONBOARDING',
@@ -1723,14 +1649,7 @@ export const selectSelectionInfo = createSelector(
   })
 );
 
-// Grading selectors - Enhanced
-export const selectEmployeesNeedingGrades = createSelector(
-  [selectGradingData],
-  (gradingData) => {
-    const employees = gradingData.employees || [];
-    return employees.filter(emp => !emp.grading_level || emp.grading_level === '');
-  }
-);
+
 
 export const selectEmployeesByGradeLevel = createSelector(
   [selectGradingData],
@@ -1768,16 +1687,6 @@ export const selectEmployeesByPositionGroup = createSelector(
   }
 );
 
-export const selectGradingProgress = createSelector(
-  [selectGradingStatistics],
-  (statistics) => {
-    const { totalEmployees, gradedEmployees } = statistics;
-    
-    if (totalEmployees === 0) return 0;
-    
-    return Math.round((gradedEmployees / totalEmployees) * 100);
-  }
-);
 
 export const selectGradingDistribution = createSelector(
   [selectEmployeesByGradeLevel, selectAllGradingLevels],
@@ -1830,25 +1739,7 @@ export const selectNewHires = createSelector(
   (employees) => employees.filter(emp => (emp.years_of_service || 0) < 0.25)
 );
 
-export const selectEmployeesNeedingAttention = createSelector(
-  [selectEmployees],
-  (employees) => ({
-    noLineManager: employees.filter(emp => !emp.line_manager),
-    noGrading: employees.filter(emp => !emp.grading_level),
-    contractEnding: employees.filter(emp => {
-      if (!emp.contract_end_date) return false;
-      const endDate = new Date(emp.contract_end_date);
-      const now = new Date();
-      const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
-      return endDate <= thirtyDaysFromNow;
-    }),
-    onLeave: employees.filter(emp => (emp.status_name || emp.status) === 'ON_LEAVE'),
-    statusUpdate: employees.filter(emp => emp.status_needs_update === true),
-    orgChartHidden: employees.filter(emp => !emp.is_visible_in_org_chart),
-    onboarding: employees.filter(emp => (emp.status_name || emp.status) === 'ONBOARDING'),
-    probation: employees.filter(emp => (emp.status_name || emp.status) === 'PROBATION')
-  })
-);
+
 
 // Loading & error state selectors - Enhanced
 export const selectIsAnyLoading = createSelector(
@@ -1863,37 +1754,23 @@ export const selectHasAnyError = createSelector(
 
 // Dashboard summary selectors - Enhanced
 export const selectDashboardSummary = createSelector(
-  [selectStatistics, selectEmployeesNeedingAttention, selectGradingProgress, selectContractExpiryAlerts],
-  (statistics, needingAttention, gradingProgress, contractAlerts) => ({
+  [selectStatistics],
+  (statistics, gradingProgress) => ({
     totalEmployees: statistics.total_employees,
     activeEmployees: statistics.active_employees,
     newHires: statistics.recent_hires_30_days,
-    upcomingEndContracts: statistics.upcoming_contract_endings_30_days,
-    employeesNeedingAttention: {
-      noLineManager: needingAttention.noLineManager.length,
-      noGrading: needingAttention.noGrading.length,
-      onLeave: needingAttention.onLeave.length,
-      contractEnding: needingAttention.contractEnding.length,
-      statusUpdate: needingAttention.statusUpdate.length,
-      orgChartHidden: needingAttention.orgChartHidden.length,
-      onboarding: needingAttention.onboarding.length,
-      probation: needingAttention.probation.length
-    },
     gradingProgress,
-    contractAlerts: {
-      totalExpiring: contractAlerts.total_expiring,
-      urgentContracts: contractAlerts.urgent_employees?.length || 0
-    },
+
     trends: {
-      newHiresTrend: statistics.recent_hires_30_days > statistics.recent_hires_30_days * 0.8 ? 'up' : 'down',
-      contractRiskTrend: contractAlerts.total_expiring > 0 ? 'up' : 'stable'
+      newHiresTrend: statistics.recent_hires_30_days > statistics.recent_hires_30_days * 0.8 ? 'up' : 'down'
+ 
     }
   })
 );
 
 export const selectEmployeeMetrics = createSelector(
   [selectEmployees, selectStatistics, selectGradingData],
-  (employees, statistics, gradingData) => ({
+  (employees, gradingData) => ({
     headcount: {
       total: employees.length,
       active: employees.filter(emp => emp.status_name === 'ACTIVE').length,
@@ -1901,20 +1778,6 @@ export const selectEmployeeMetrics = createSelector(
       onboarding: employees.filter(emp => emp.status_name === 'ONBOARDING').length,
       probation: employees.filter(emp => emp.status_name === 'PROBATION').length,
       inactive: employees.filter(emp => emp.status_name === 'INACTIVE').length
-    },
-    diversity: {
-      genderDistribution: employees.reduce((acc, emp) => {
-        const gender = emp.gender || 'Not Specified';
-        acc[gender] = (acc[gender] || 0) + 1;
-        return acc;
-      }, {}),
-      averageAge: employees.reduce((sum, emp) => {
-        if (emp.date_of_birth) {
-          const age = new Date().getFullYear() - new Date(emp.date_of_birth).getFullYear();
-          return sum + age;
-        }
-        return sum;
-      }, 0) / employees.filter(emp => emp.date_of_birth).length || 0
     },
     performance: {
       gradingProgress: gradingData.employees?.length > 0 ? 
@@ -1938,27 +1801,10 @@ export const selectEmployeeMetrics = createSelector(
         return startDate.getMonth() === thisMonth.getMonth() && 
                startDate.getFullYear() === thisMonth.getFullYear();
       }).length,
-      upcomingContractEnds: employees.filter(emp => {
-        if (!emp.contract_end_date) return false;
-        const endDate = new Date(emp.contract_end_date);
-        const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-        return endDate <= thirtyDaysFromNow;
-      }).length,
+
       veteranEmployees: employees.filter(emp => (emp.years_of_service || 0) >= 5).length
     },
-    risks: {
-      contractRisk: employees.length > 0 ? 
-        (employees.filter(emp => {
-          if (!emp.contract_end_date) return false;
-          const endDate = new Date(emp.contract_end_date);
-          const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000);
-          return endDate <= thirtyDaysFromNow;
-        }).length / employees.length) * 100 : 0,
-      statusRisk: employees.length > 0 ? 
-        (employees.filter(emp => emp.status_needs_update).length / employees.length) * 100 : 0,
-      managementGap: employees.length > 0 ? 
-        (employees.filter(emp => !emp.line_manager).length / employees.length) * 100 : 0
-    }
+   
   })
 );
 

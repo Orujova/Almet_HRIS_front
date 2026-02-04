@@ -452,7 +452,7 @@ deleteContractConfig: (id) => api.delete(`/contract-configs/${id}/`),
   },
 
   getEmployeeDirectReports: (employeeId) => api.get(`/employees/${employeeId}/direct_reports/`),
-  getEmployeeStatusPreview: (employeeId) => api.get(`/employees/${employeeId}/status_preview/`),
+
   getEmployeeStatistics: () => api.get("/employees/statistics/"),
 
   // ========================================
@@ -488,11 +488,6 @@ deleteContractConfig: (id) => api.delete(`/contract-configs/${id}/`),
   bulkAssignLineManager: (data) => api.post("/employees/bulk-assign-line-manager/", data),
 
 
-
- 
-
-
-// api.js - exportEmployees method - COMPLETELY FIXED
 
 exportEmployees: async (format = 'excel', params = {}) => {
   try {
@@ -740,8 +735,8 @@ exportEmployees: async (format = 'excel', params = {}) => {
       is_active: searchParams.is_active,
       is_visible_in_org_chart: searchParams.is_visible_in_org_chart,
       is_deleted: searchParams.is_deleted,
-      status_needs_update: searchParams.status_needs_update,
-      contract_expiring_days: searchParams.contract_expiring_days,
+    
+   
       ordering: searchParams.sorting || searchParams.ordering,
       page: searchParams.page,
       page_size: searchParams.page_size
@@ -774,7 +769,6 @@ exportEmployees: async (format = 'excel', params = {}) => {
       'on_leave': { status: ['ON_LEAVE'] },
       'no_line_manager': { line_manager: null },
       'needs_grading': { grading_level: [] },
-      'contract_ending_soon': { contract_expiring_days: 30 },
       'org_chart_visible': { is_visible_in_org_chart: true },
       'org_chart_hidden': { is_visible_in_org_chart: false }
     };
