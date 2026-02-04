@@ -202,30 +202,37 @@ const OrgChart = () => {
 const companyFilteredOrgChart = useMemo(() => {
     if (!selectedCompany || !fullTree) return [];
     
+    
     if (selectedCompany === 'ALL') {
+        console.log(`✅ Showing ALL - ${fullTree.length} items`);
         return fullTree;
     }
     
-    // ✅ CRITICAL FIX: Filter both employees AND vacancies
+    // ✅ Filter with comprehensive checks
     const filtered = fullTree.filter(emp => {
-        // Check if it's a vacancy
-        const isVacancy = emp.employee_details?.is_vacancy || 
-                         emp.is_vacancy || 
-                         emp.record_type === 'vacancy';
+        if (!emp) return false;
         
-   
-        if (isVacancy) {
-            return emp.business_function === selectedCompany;
-        } else {
-            return emp.business_function === selectedCompany || 
-                   emp.business_function_name === selectedCompany;
+        // Get business function value (works for both employees and vacancies)
+        const businessFunction = emp.business_function || 
+                                emp.business_function_name || 
+                                emp.department?.business_function ||
+                                null;
+        
+        const matches = businessFunction === selectedCompany;
+        
+        if (!matches) {
+            console.log(`❌ Filtered out: ${emp.name || emp.employee_id} - BF: ${businessFunction}`);
         }
+        
+        return matches;
     });
     
-    console.log(`🏢 Company filter: ${selectedCompany}`);
-    console.log(`📊 Total after company filter: ${filtered.length}`);
-    console.log(`👥 Employees: ${filtered.filter(e => !e.employee_details?.is_vacancy).length}`);
-    console.log(`📍 Vacancies: ${filtered.filter(e => e.employee_details?.is_vacancy).length}`);
+    const employees = filtered.filter(e => !e.employee_details?.is_vacancy && !e.is_vacancy);
+    const vacancies = filtered.filter(e => e.employee_details?.is_vacancy || e.is_vacancy);
+    
+    console.log(`✅ After company filter: ${filtered.length} total`);
+    console.log(`   - Employees: ${employees.length}`);
+    console.log(`   - Vacancies: ${vacancies.length}`);
     
     return filtered;
 }, [fullTree, selectedCompany]);
