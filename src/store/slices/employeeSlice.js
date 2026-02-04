@@ -381,7 +381,7 @@ const initialState = {
   orgChart: [],
   activities: {},
   directReports: {},
-  statusPreviews: {},
+
 
 
 
@@ -472,7 +472,7 @@ const initialState = {
     grading: false,
     activities: false,
     directReports: false,
-    statusPreview: false,
+ 
     profilePhoto: false,
     exporting: false,
     statusUpdate: false,
@@ -499,7 +499,7 @@ const initialState = {
     activities: null,
     directReports: null,
     profilePhoto: null,
-    statusPreview: null,
+
     export: null,
     statusUpdate: null,
     tagUpdate: null,
@@ -1393,7 +1393,7 @@ export const selectGradingStatistics = (state) => state.employees.gradingStatist
 export const selectAllGradingLevels = (state) => state.employees.allGradingLevels;
 export const selectActivities = (state) => state.employees.activities;
 export const selectDirectReports = (state) => state.employees.directReports;
-export const selectStatusPreviews = (state) => state.employees.statusPreviews;
+
 export const selectViewMode = (state) => state.employees.viewMode;
 export const selectShowAdvancedFilters = (state) => state.employees.showAdvancedFilters;
 export const selectShowGradingPanel = (state) => state.employees.showGradingPanel;
@@ -1755,11 +1755,11 @@ export const selectHasAnyError = createSelector(
 // Dashboard summary selectors - Enhanced
 export const selectDashboardSummary = createSelector(
   [selectStatistics],
-  (statistics, gradingProgress) => ({
+  (statistics) => ({
     totalEmployees: statistics.total_employees,
     activeEmployees: statistics.active_employees,
     newHires: statistics.recent_hires_30_days,
-    gradingProgress,
+   
 
     trends: {
       newHiresTrend: statistics.recent_hires_30_days > statistics.recent_hires_30_days * 0.8 ? 'up' : 'down'
@@ -1780,8 +1780,7 @@ export const selectEmployeeMetrics = createSelector(
       inactive: employees.filter(emp => emp.status_name === 'INACTIVE').length
     },
     performance: {
-      gradingProgress: gradingData.employees?.length > 0 ? 
-        (gradingData.employees.filter(emp => emp.grading_level).length / gradingData.employees.length) * 100 : 0,
+   
       averageServiceYears: employees.reduce((sum, emp) => sum + (emp.years_of_service || 0), 0) / employees.length || 0,
       managementCoverage: employees.length > 0 ? 
         (employees.filter(emp => emp.line_manager).length / employees.length) * 100 : 0

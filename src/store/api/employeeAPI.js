@@ -430,24 +430,11 @@ export const employeeAPI = {
     return apiService.updateEmployee(id, formData);
   },
 
-
-  
-  // ========================================
-  // EMPLOYEE SPECIFIC DETAILS
-  // ========================================
   getActivities: (employeeId) => apiService.getEmployeeActivities(employeeId),
   getDirectReports: (employeeId) => apiService.getEmployeeDirectReports(employeeId),
-  getStatusPreview: (employeeId) => apiService.getEmployeeStatusPreview(employeeId),
-  
-  // ========================================
-  // EMPLOYEE STATISTICS
-  // ========================================
+
   getStatistics: () => apiService.getEmployeeStatistics(),
   
-  // ========================================
-  // BULK OPERATIONS - Enhanced
-  // ========================================
-
   bulkUpload: (file) => apiService.bulkUploadEmployees(file),
   
   // ========================================

@@ -68,7 +68,6 @@ import {
   selectAllGradingLevels,
   selectActivities,
   selectDirectReports,
-  selectStatusPreviews,
   selectViewMode,
   selectShowAdvancedFilters,
   selectShowGradingPanel,
@@ -130,7 +129,6 @@ export const useEmployees = () => {
   const sorting = useSelector(selectSorting);
   const activities = useSelector(selectActivities);
   const directReports = useSelector(selectDirectReports);
-  const statusPreviews = useSelector(selectStatusPreviews);
   const viewMode = useSelector(selectViewMode);
   const showAdvancedFilters = useSelector(selectShowAdvancedFilters);
   
@@ -536,8 +534,7 @@ export const useEmployees = () => {
     filteredCount: filteredEmployeesCount,
     totalEmployees: employees.length,
     
-    // Grading
-    gradingProgress: gradingProgress,
+
 
     gradedEmployeesCount: gradingStatistics.gradedEmployees,
     
@@ -1061,7 +1058,7 @@ export const useEmployees = () => {
     sorting,
     activities,
     directReports,
-    statusPreviews,
+ 
     viewMode,
     showAdvancedFilters,
     profilePhotoLoading,
@@ -1074,7 +1071,7 @@ export const useEmployees = () => {
     gradingMode,
     employeesByGradeLevel,
     employeesByPositionGroup,
-    gradingProgress,
+   
     gradingDistribution,
     employeesByStatus,
     employeesByDepartment,
@@ -1311,7 +1308,7 @@ export const useEmployeeGrading = () => {
     allGradingLevels,
 
     employeesByGradeLevel,
-    gradingProgress,
+  
     loading: loading.grading,
     error: error.grading,
     refreshGradingData,
