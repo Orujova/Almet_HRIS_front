@@ -174,7 +174,7 @@ export default function ContractRenewalHRModal({ contract, onClose, onSuccess })
               onChange={(e) => setComments(e.target.value)}
               rows={4}
               placeholder="Add any HR processing notes..."
-              className="w-full px-3 py-2 text-xs border border-almet-bali-hai dark:border-almet-comet bg-white dark:bg-almet-cloud-burst/30 text-almet-cloud-burst dark:text-white rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none"
+              className="w-full px-3 py-2 text-xs border focus:outline-none  border-almet-bali-hai dark:border-almet-comet bg-white dark:bg-almet-cloud-burst/30 text-almet-cloud-burst dark:text-white rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none"
             />
           </div>
         </div>

@@ -36,7 +36,7 @@ export const ApprovalModal = ({
           {selectedRequest?.status === 'PENDING_FINANCE' && (
             <div>
               <label className="block text-xs font-medium text-almet-comet dark:text-almet-bali-hai mb-2">
-                Trip Amount (AZN) *
+                Trip Amount (AZN) 
               </label>
               <input
                 type="number"

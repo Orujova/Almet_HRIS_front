@@ -58,7 +58,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     bulkAddTags,
     bulkRemoveTags,
     bulkAssignLineManager,
-    bulkExtendContracts,
+
     exportEmployees,
     downloadEmployeeTemplate,
     showInOrgChart,
@@ -153,17 +153,17 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
   // 🎯 PAGINATION HANDLERS - SIMPLIFIED WITH REF LOCK
   // ========================================
   const handlePageChange = useCallback((newPage) => {
-    console.log('📄 Page change:', newPage);
+
     setCurrentPage(newPage);
   }, [setCurrentPage]);
 
   const handlePageSizeChange = useCallback((newPageSize) => {
-    console.log('📄 Page size change:', newPageSize);
-    console.log('🔒 Locked BF:', lockedBusinessFunction.current);
-    
-    setPageSize(newPageSize);
-    setCurrentPage(1);
-  }, [setPageSize, setCurrentPage]);
+
+  setPageSize(newPageSize);
+  setCurrentPage(1);
+  
+
+}, [setPageSize, setCurrentPage]);
 
   // Color system initialization
   useEffect(() => {
@@ -299,8 +299,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
 
   // ✅ CRITICAL: buildApiParams uses LOCKED business_function from ref
   const buildApiParams = useCallback(() => {
-    console.log('🔧 buildApiParams START');
-    console.log('🔒 Locked BF:', lockedBusinessFunction.current);
+
     
     const params = {
       page: pagination.page || 1,
@@ -310,10 +309,10 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     // ✅ CRITICAL: USE THE LOCKED VALUE FROM REF - NEVER CHANGES
     if (lockedBusinessFunction.current !== null) {
       params.business_function = String(lockedBusinessFunction.current);
-      console.log('🔒 Using LOCKED business_function:', params.business_function);
+ 
     } else if (!isWrapperFilterApplied && localFilters.business_function?.length > 0) {
       params.business_function = localFilters.business_function.join(',');
-      console.log('📌 Using manual business_function:', params.business_function);
+   
     }
 
     if (localFilters.search?.trim()) {
@@ -378,9 +377,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
       params.contract_expiring_days = parseInt(localFilters.contract_expiring_days);
     }
 
-    console.log('✅ Final params:', params);
-    console.log('🔧 buildApiParams END');
-    
+
     return params;
   }, [
     localFilters, 
@@ -436,8 +433,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     debounceRef.current = setTimeout(() => {
       const now = Date.now();
       if (now - lastFetchTime.current > 100) {
-        console.log('🚀 Executing fetch');
-        console.log('Params:', params);
+    
         
         // Create new AbortController
         abortControllerRef.current = new AbortController();
@@ -462,7 +458,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
       if (bf) {
         const bfId = Number(bf.id || bf.value);
         
-        console.log('🔒 LOCKING business_function:', bfId);
+  
         
         // ✅ LOCK IT IN REF - THIS NEVER CHANGES
         lockedBusinessFunction.current = bfId;
@@ -518,24 +514,23 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
           console.log('⏸️ Waiting for business_function lock...');
           return;
         }
-        console.log('✅ Business_function locked:', lockedBusinessFunction.current);
+       
       }
       
       try {
-        console.log('🚀 Initializing data...');
+     
         initialized.current = true;
         clearErrors();
         
         await fetchStatistics();
         
         const params = buildApiParams();
-        console.log('📊 Initial params:', params);
+  
         
         lastApiParamsRef.current = params;
         await fetchEmployees(params);
         
-        console.log('✅ Initialize complete');
-        
+     
       } catch (error) {
         console.error('❌ Initialize failed:', error);
         showError('Failed to initialize data');
@@ -576,7 +571,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
 
     const params = buildApiParams();
     
-    console.log('🚀 Fetching with params:', params);
+  
     debouncedFetchEmployees(params);
   }, [
     apiParamsChanged, 
@@ -630,8 +625,8 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
       setSorting({ multiple: newSorting });
     }
     setCurrentPage(1);
-    showInfo(`Sorting updated: ${newSorting.length} level(s)`);
-  }, [setSorting, clearSorting, setCurrentPage, showInfo]);
+
+  }, [setSorting, clearSorting, setCurrentPage]);
 
   const handleClearAllSorting = useCallback(() => {
     clearSorting();
@@ -689,8 +684,8 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     
     setLocalFilters(prev => ({ ...prev, ...processedFilters }));
     setCurrentPage(1);
-    showInfo('Advanced filters applied');
-  }, [setCurrentPage, showInfo]);
+ 
+  }, [setCurrentPage]);
 
   const handleClearFilter = useCallback((key) => {
     if (key === 'business_function' && isWrapperFilterApplied) {
@@ -711,8 +706,8 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     });
     
     setCurrentPage(1);
-    showInfo(`${key} filter cleared`);
-  }, [isWrapperFilterApplied, showWarning, setCurrentPage, showInfo]);
+
+  }, [isWrapperFilterApplied, showWarning, setCurrentPage]);
 
   const handleClearAllFilters = useCallback(() => {
     const clearedFilters = {
@@ -918,7 +913,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
               tag_id: options.tag_id
             };
             
-            showInfo('Adding tags...');
+           
             result = await bulkAddTags(payload.employee_ids, payload.tag_id);
             clearSelection();
             await refreshAllData(true);
@@ -964,23 +959,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
           }
           break;
 
-        case "bulkExtendContracts":
-          try {
-            result = await bulkExtendContracts({
-              employee_ids: selectedEmployees,
-              new_contract_type: options.new_contract_type,
-              new_start_date: options.new_start_date,
-              reason: options.reason
-            });
-            
-            clearSelection();
-            await refreshAllData(true);
-            showSuccess(`Contracts extended for ${selectedEmployees.length} employee${selectedEmployees.length !== 1 ? 's' : ''}!`);
-          } catch (error) {
-            showError('Contract extension failed: ' + error.message);
-          }
-          break;
-
+      
         default:
           console.warn('Unknown bulk action:', action);
       }
@@ -995,7 +974,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
     bulkAddTags,
     bulkRemoveTags,
     bulkAssignLineManager,
-    bulkExtendContracts,
+
     downloadEmployeeTemplate,
     showInOrgChart,
     hideFromOrgChart,
@@ -1250,9 +1229,6 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
           showInfo(`Job Description for ${employee?.name || employeeId} - Feature coming soon!`);
           break;
 
-        case "competencyMatrix":
-          showInfo(`Competency Matrix for ${employee?.name || employeeId} - Feature coming soon!`);
-          break;
 
         case "performanceManagement":
           showInfo(`Performance Management for ${employee?.name || employeeId} - Feature coming soon!`);
@@ -1703,7 +1679,7 @@ const HeadcountTable = ({ businessFunctionFilter = null }) => {
                 initialized.current = false;
                 lastApiParamsRef.current = null;
                 lockedBusinessFunction.current = null;
-                showInfo('Reloading application...');
+           
                 window.location.reload();
               }}
               className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors"

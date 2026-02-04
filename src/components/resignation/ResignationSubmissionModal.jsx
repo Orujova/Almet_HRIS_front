@@ -164,7 +164,7 @@ export default function ResignationSubmissionModal({ onClose, onSuccess, current
                }
                rows={4}
                placeholder="Please provide any additional information about your resignation..."
-               className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-0 focus:border-gray-300 resize-none"
+               className="w-full px-3 py-2 text-sm border  border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:outline-none focus:ring-0 focus:border-gray-300 resize-none"
                />
 
           </div>

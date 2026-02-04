@@ -198,64 +198,96 @@ const OrgChart = () => {
         return options;
     }, [orgChart]);
 
-    // Filter orgChart by selected company
-    const companyFilteredOrgChart = useMemo(() => {
-        // If no company selected, return empty array
-        if (!selectedCompany || !orgChart) return [];
+
+const companyFilteredOrgChart = useMemo(() => {
+    if (!selectedCompany || !fullTree) return [];
+    
+    if (selectedCompany === 'ALL') {
+        return fullTree;
+    }
+    
+    // ✅ CRITICAL FIX: Filter both employees AND vacancies
+    const filtered = fullTree.filter(emp => {
+        // Check if it's a vacancy
+        const isVacancy = emp.employee_details?.is_vacancy || 
+                         emp.is_vacancy || 
+                         emp.record_type === 'vacancy';
         
-        // If "ALL" selected, return all employees
-        if (selectedCompany === 'ALL') {
-            return orgChart;
+   e
+        if (isVacancy) {
+            return emp.business_function === selectedCompany;
+        } else {
+            return emp.business_function === selectedCompany || 
+                   emp.business_function_name === selectedCompany;
         }
+    });
+    
+    console.log(`🏢 Company filter: ${selectedCompany}`);
+    console.log(`📊 Total after company filter: ${filtered.length}`);
+    console.log(`👥 Employees: ${filtered.filter(e => !e.employee_details?.is_vacancy).length}`);
+    console.log(`📍 Vacancies: ${filtered.filter(e => e.employee_details?.is_vacancy).length}`);
+    
+    return filtered;
+}, [fullTree, selectedCompany]);
+
+// Apply search filter on company filtered data - INCLUDING VACANCIES
+const searchFilteredOrgChart = useMemo(() => {
+    if (!companyFilteredOrgChart || companyFilteredOrgChart.length === 0) {
+        return [];
+    }
+
+    if (!filters.search || filters.search.trim() === '') {
+        return companyFilteredOrgChart;
+    }
+
+    const searchTerm = filters.search.toLowerCase().trim();
+
+    return companyFilteredOrgChart.filter(employee => {
+        if (!employee) return false;
+
+        // ✅ FIX: Handle both employees and vacancies in search
+        const isVacancy = employee.employee_details?.is_vacancy || 
+                         employee.is_vacancy || 
+                         employee.record_type === 'vacancy';
+
+        const searchableFields = [
+            employee.name,
+            employee.employee_id,
+            employee.title,
+            employee.job_title,
+            employee.department,
+            employee.unit,
+            employee.business_function,
+            employee.business_function_name
+        ];
         
-        // Filter by specific company
-        const filtered = orgChart.filter(emp => emp.business_function === selectedCompany);
-        return filtered;
-    }, [orgChart, selectedCompany]);
-
-    // Apply search filter on company filtered data
-    const searchFilteredOrgChart = useMemo(() => {
-        if (!companyFilteredOrgChart || companyFilteredOrgChart.length === 0) {
-            return [];
+        // ✅ For vacancies, add position-specific fields
+        if (isVacancy) {
+            searchableFields.push(
+                employee.employee_details?.position_id,
+                'VACANT',
+                'vacancy'
+            );
+        } else {
+            searchableFields.push(employee.email);
         }
 
-        // If no search term, return company filtered data
-        if (!filters.search || filters.search.trim() === '') {
-            return companyFilteredOrgChart;
-        }
+        return searchableFields
+            .filter(Boolean)
+            .map(field => String(field).toLowerCase())
+            .some(field => field.includes(searchTerm));
+    });
+}, [companyFilteredOrgChart, filters.search]);
 
-        const searchTerm = filters.search.toLowerCase().trim();
 
-        return companyFilteredOrgChart.filter(employee => {
-            if (!employee) return false;
-
-            const searchableFields = [
-                employee.name,
-                employee.employee_id,
-                employee.email,
-                employee.title,
-                employee.department,
-                employee.unit,
-                employee.business_function
-            ]
-                .filter(Boolean)
-                .map(field => String(field).toLowerCase());
-
-            return searchableFields.some(field => field.includes(searchTerm));
-        });
-    }, [companyFilteredOrgChart, filters.search]);
-
-    // Count vacant positions from search filtered data
-    // Update vacancy count calculation
 const vacantCount = useMemo(() => {
     if (!searchFilteredOrgChart || searchFilteredOrgChart.length === 0) {
         return 0;
     }
     
     return searchFilteredOrgChart.filter(emp => {
-        // ✅ FIXED: Check employee_details.is_vacancy first
         return Boolean(
-            emp.employee_details?.is_vacancy ||  // ✅ Primary - backend format
+            emp.employee_details?.is_vacancy ||
             emp.is_vacancy || 
             emp.vacant || 
             emp.record_type === 'vacancy' ||
@@ -264,43 +296,60 @@ const vacantCount = useMemo(() => {
     }).length;
 }, [searchFilteredOrgChart]);
 
-    // Calculate summary stats from search filtered data
-    const companySummary = useMemo(() => {
-        if (!searchFilteredOrgChart || searchFilteredOrgChart.length === 0) {
-            return {
-                totalEmployees: 0,
-                totalManagers: 0,
-                totalDepartments: 0,
-                totalBusinessFunctions: 0
-            };
-        }
-
-        const totalEmployees = searchFilteredOrgChart.length;
-        const totalManagers = searchFilteredOrgChart.filter(emp => 
-            emp.direct_reports && emp.direct_reports > 0
-        ).length;
-        
-        const departments = new Set(
-            searchFilteredOrgChart
-                .map(emp => emp.department)
-                .filter(Boolean)
-        );
-        
-        const businessFunctions = new Set(
-            searchFilteredOrgChart
-                .map(emp => emp.business_function)
-                .filter(Boolean)
-        );
-
+// Calculate summary stats - FIXED to include vacancies
+const companySummary = useMemo(() => {
+    if (!searchFilteredOrgChart || searchFilteredOrgChart.length === 0) {
         return {
-            totalEmployees,
-            totalManagers,
-            totalDepartments: departments.size,
-            totalBusinessFunctions: businessFunctions.size
+            totalEmployees: 0,
+            totalManagers: 0,
+            totalDepartments: 0,
+            totalBusinessFunctions: 0,
+            totalVacancies: 0
         };
-    }, [searchFilteredOrgChart]);
+    }
 
-    // Fetch Job Description with Database ID
+    // ✅ Separate employees and vacancies
+    const employees = searchFilteredOrgChart.filter(emp => 
+        !emp.employee_details?.is_vacancy && 
+        !emp.is_vacancy && 
+        emp.record_type !== 'vacancy'
+    );
+    
+    const vacancies = searchFilteredOrgChart.filter(emp => 
+        emp.employee_details?.is_vacancy || 
+        emp.is_vacancy || 
+        emp.record_type === 'vacancy'
+    );
+
+    const totalEmployees = employees.length;
+    const totalVacancies = vacancies.length;
+    
+    const totalManagers = employees.filter(emp => 
+        emp.direct_reports && emp.direct_reports > 0
+    ).length;
+    
+    const departments = new Set(
+        searchFilteredOrgChart
+            .map(emp => emp.department || emp.department_name)
+            .filter(Boolean)
+    );
+    
+    const businessFunctions = new Set(
+        searchFilteredOrgChart
+            .map(emp => emp.business_function || emp.business_function_name)
+            .filter(Boolean)
+    );
+
+    return {
+        totalEmployees,
+        totalManagers,
+        totalDepartments: departments.size,
+        totalBusinessFunctions: businessFunctions.size,
+        totalVacancies,
+        totalPositions: totalEmployees + totalVacancies
+    };
+}, [searchFilteredOrgChart]);
+
      const fetchJobDescription = async (employeeId) => {
         try {
             setDetailLoading(true);

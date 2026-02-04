@@ -1,6 +1,6 @@
 // src/components/headcount/AdvancedFilterPanel.jsx - UPDATED with common components
 import { useState, useEffect, useMemo, useCallback  } from "react";
-import { X, Search, AlertCircle, Filter, Check, ChevronDown, RefreshCw } from "lucide-react";
+import { X, Search, AlertCircle,  RefreshCw } from "lucide-react";
 import { useTheme } from "../common/ThemeProvider";
 import SearchableDropdown from "../common/SearchableDropdown"; // Import common component
 import MultiSelect from "../common/MultiSelect"; // Import common component

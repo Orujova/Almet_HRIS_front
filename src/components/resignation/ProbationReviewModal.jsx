@@ -252,7 +252,7 @@ export default function ProbationReviewModal({ review, onClose, onSuccess, respo
         onChange={(e) => handleResponseChange(question.id, 'text_value', e.target.value)}
         disabled={isViewMode}
         rows={3}
-        className={`w-full px-3 py-2 text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none ${
+        className={`w-full px-3 py-2 text-xs border focus:outline-none  border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-white rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none ${
           isViewMode ? 'opacity-75 cursor-default bg-gray-50 dark:bg-gray-800' : ''
         }`}
         placeholder={isViewMode ? '' : 'Your answer...'}

@@ -507,7 +507,7 @@ function QuestionFormModal({ questionType, editingQuestion, onClose, onSuccess }
               value={formData.question_text_en}
               onChange={(e) => setFormData({...formData, question_text_en: e.target.value})}
               rows={3}
-              className="w-full px-3 py-2 text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-0 focus:border-gray-300 focus:border-transparent resize-none"
+              className="w-full px-3 py-2 text-xs border  focus:ring-almet-sapphire border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-0 focus:border-gray-300 focus:border-transparent resize-none"
               placeholder="Enter question in English..."
             />
           </div>
@@ -521,7 +521,7 @@ function QuestionFormModal({ questionType, editingQuestion, onClose, onSuccess }
               value={formData.question_text_az}
               onChange={(e) => setFormData({...formData, question_text_az: e.target.value})}
               rows={3}
-              className="w-full px-3 py-2 text-xs border border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-0 focus:border-gray-300 focus:border-transparent resize-none"
+              className="w-full px-3 py-2 text-xs border  focus:ring-almet-sapphire border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-0 focus:border-gray-300 focus:border-transparent resize-none"
               placeholder="Sualı Azərbaycan dilində daxil edin..."
             />
           </div>
@@ -539,7 +539,7 @@ function QuestionFormModal({ questionType, editingQuestion, onClose, onSuccess }
                   onChange={(e) => setChoiceInput(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddChoice())}
                   placeholder="Enter choice and press Enter..."
-                  className="flex-1 px-3 py-2 text-xs border outline-0 inline-0 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-0 focus:border-gray-300 focus:border-transparent"
+                  className="flex-1 px-3 py-2 text-xs border outline-0  focus:ring-almet-sapphire inline-0 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-0 focus:border-gray-300 focus:border-transparent"
                 />
                 <button
                   type="button"
@@ -575,7 +575,7 @@ function QuestionFormModal({ questionType, editingQuestion, onClose, onSuccess }
               type="number"
               value={formData.order}
               onChange={(e) => setFormData({...formData, order: parseInt(e.target.value) || 0})}
-              className="w-full px-3 py-2 text-xs border outline-0 inline-0 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-0 focus:border-gray-300 focus:border-transparent"
+              className="w-full px-3 py-2 text-xs border  focus:ring-almet-sapphire outline-0 inline-0 border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-200 rounded-lg focus:outline-none focus:ring-0 focus:border-gray-300 focus:border-transparent"
               min="0"
             />
           </div>

@@ -505,7 +505,7 @@ export const employeeAPI = {
   // CONTRACT MANAGEMENT
   // ========================================
   extendContract: (data) => apiService.extendEmployeeContract(data),
-  bulkExtendContracts: (data) => apiService.bulkExtendContracts(data),
+
 
  
   

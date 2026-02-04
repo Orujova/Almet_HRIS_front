@@ -208,17 +208,7 @@ export const extendEmployeeContract = createAsyncThunk(
   }
 );
 
-export const bulkExtendContracts = createAsyncThunk(
-  'employees/bulkExtendContracts',
-  async (data, { rejectWithValue }) => {
-    try {
-      const response = await employeeAPI.bulkExtendContracts(data);
-      return response.data;
-    } catch (error) {
-      return rejectWithValue(error.data || error.message);
-    }
-  }
-);
+
 
 
 
@@ -1269,40 +1259,7 @@ const employeeSlice = createSlice({
         state.selectedEmployees = [];
       });
 
-    // Contract management
-    builder
-      .addCase(extendEmployeeContract.pending, (state) => {
-        state.loading.contractUpdate = true;
-        state.error.contractUpdate = null;
-      })
-      .addCase(extendEmployeeContract.fulfilled, (state, action) => {
-        state.loading.contractUpdate = false;
-        const result = action.payload;
-        if (result.updated_employee) {
-          const employee = state.employees.find(emp => emp.id === result.updated_employee.employee_id);
-          if (employee) {
-            Object.assign(employee, result.updated_employee);
-          }
-        }
-      })
-      .addCase(extendEmployeeContract.rejected, (state, action) => {
-        state.loading.contractUpdate = false;
-        state.error.contractUpdate = action.payload;
-      });
-
-    builder
-      .addCase(bulkExtendContracts.fulfilled, (state, action) => {
-        const result = action.payload;
-        if (result.updated_employees) {
-          result.updated_employees.forEach(update => {
-            const employee = state.employees.find(emp => emp.id === update.employee_id);
-            if (employee) {
-              Object.assign(employee, update);
-            }
-          });
-        }
-        state.selectedEmployees = [];
-      });
+   
 
   
 

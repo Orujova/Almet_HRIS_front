@@ -487,11 +487,8 @@ deleteContractConfig: (id) => api.delete(`/contract-configs/${id}/`),
   assignLineManager: (data) => api.post("/employees/assign-line-manager/", data),
   bulkAssignLineManager: (data) => api.post("/employees/bulk-assign-line-manager/", data),
 
-  // ========================================
-  // CONTRACT MANAGEMENT
-  // ========================================
-  extendEmployeeContract: (data) => api.post("/employees/extend-contract/", data),
-  bulkExtendContracts: (data) => api.post("/employees/bulk-extend-contracts/", data),
+
+
  
 
 
@@ -499,8 +496,7 @@ deleteContractConfig: (id) => api.delete(`/contract-configs/${id}/`),
 
 exportEmployees: async (format = 'excel', params = {}) => {
   try {
-    console.log('🚀 exportEmployees called:', { format, params });
-    
+
     // ✅ Build POST body payload
     const payload = {
       export_format: format === 'csv' ? 'csv' : 'excel'
@@ -849,10 +845,7 @@ exportEmployees: async (format = 'excel', params = {}) => {
         employee_ids: employeeIds,
         line_manager_id: managerId
       }),
-      'extend_contracts': (contractData) => apiService.bulkExtendContracts({
-        employee_ids: employeeIds,
-        ...contractData
-      }),
+   
       'show_in_org_chart': () => apiService.bulkToggleOrgChartVisibility(employeeIds, true),
       'hide_from_org_chart': () => apiService.bulkToggleOrgChartVisibility(employeeIds, false),
      
@@ -867,8 +860,6 @@ exportEmployees: async (format = 'excel', params = {}) => {
       return operationFn(data.tagId);
     } else if (operation === 'assign_manager') {
       return operationFn(data.managerId);
-    } else if (operation === 'extend_contracts') {
-      return operationFn(data);
     } else if (operation === 'update_grades') {
       return operationFn(data.updates);
     } else {

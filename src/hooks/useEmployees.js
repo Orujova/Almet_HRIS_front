@@ -13,8 +13,7 @@ import {
   bulkRemoveTags,
   assignLineManager,
   bulkAssignLineManager,
-  extendEmployeeContract,
-  bulkExtendContracts,
+
   fetchEmployeeGrading,
  
   exportEmployees,
@@ -223,9 +222,7 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
   const bulkAssignLineManagerAction = useCallback((employee_ids, line_manager_id) => 
     dispatch(bulkAssignLineManager({ employee_ids, line_manager_id })), [dispatch]);
   
-  // Contract management
-  const extendEmployeeContractAction = useCallback((data) => dispatch(extendEmployeeContract(data)), [dispatch]);
-  const bulkExtendContractsAction = useCallback((data) => dispatch(bulkExtendContracts(data)), [dispatch]);
+
   
 
   
@@ -496,10 +493,7 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
     assignLineManager: assignLineManagerAction,
     bulkAssignLineManager: bulkAssignLineManagerAction,
     
-    // Contract management
-    extendEmployeeContract: extendEmployeeContractAction,
-    bulkExtendContracts: bulkExtendContractsAction,
- 
+
  
     
     // Grading management
@@ -964,8 +958,7 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
           return dispatch(bulkRemoveTags({ employee_ids: employeeIds, tag_id: operationData.tagId }));
         case 'assign_manager':
           return dispatch(bulkAssignLineManager({ employee_ids: employeeIds, line_manager_id: operationData.managerId }));
-        case 'extend_contracts':
-          return dispatch(bulkExtendContracts({ employee_ids: employeeIds, ...operationData }));
+       
        
         case 'show_in_org_chart':
           return dispatch(bulkToggleOrgChartVisibility({ employeeIds, setVisible: true }));
@@ -1251,16 +1244,16 @@ const profilePhotoLoading = useSelector(selectProfilePhotoLoading);
   }, [actions.fetchFilterOptions]);
 
   // Controlled fetching with parameter comparison
-  useEffect(() => {
-    if (isInitialized.current) {
-      const currentParams = JSON.stringify(apiParams);
-      if (lastFetchParams.current !== currentParams) {
+  // useEffect(() => {
+  //   if (isInitialized.current) {
+  //     const currentParams = JSON.stringify(apiParams);
+  //     if (lastFetchParams.current !== currentParams) {
 
-        lastFetchParams.current = currentParams;
-        dispatch(fetchEmployees(apiParams));
-      }
-    }
-  }, [apiParams, dispatch]);
+  //       lastFetchParams.current = currentParams;
+  //       dispatch(fetchEmployees(apiParams));
+  //     }
+  //   }
+  // }, [apiParams, dispatch]);
 
   // Initialize statistics and grading data only once
   useEffect(() => {
@@ -1528,13 +1521,7 @@ export const useContractManagement = () => {
 
  
 
-  const extendContract = useCallback((data) => {
-    return dispatch(extendEmployeeContract(data));
-  }, [dispatch]);
 
-  const bulkExtendContracts = useCallback((data) => {
-    return dispatch(bulkExtendContracts(data));
-  }, [dispatch]);
 
   const getContractUrgency = useCallback((employee) => {
     if (!employee.contract_end_date || employee.contract_duration === 'PERMANENT') {
@@ -1593,8 +1580,7 @@ export const useContractManagement = () => {
     loading: loading.contractAlerts,
     error: error.contractAlerts,
     refreshAlerts,
-    extendContract,
-    bulkExtendContracts,
+   
     getContractUrgency,
     getContractsByUrgency,
     getContractAnalysis,

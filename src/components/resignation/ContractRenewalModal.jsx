@@ -384,7 +384,7 @@ export default function ContractRenewalModal({ contract, onClose, onSuccess, use
                       value={formData.new_salary}
                       onChange={(e) => setFormData({...formData, new_salary: e.target.value})}
                       placeholder="Enter new salary amount..."
-                      className="w-full pl-9 pr-3 py-2 text-xs border border-almet-bali-hai dark:border-almet-comet bg-white dark:bg-almet-cloud-burst/30 text-almet-cloud-burst dark:text-white rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
+                      className="w-full pl-9 pr-3 py-2 text-xs border focus:outline-none  border-almet-bali-hai dark:border-almet-comet bg-white dark:bg-almet-cloud-burst/30 text-almet-cloud-burst dark:text-white rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
                     />
                   </div>
                 </div>
@@ -427,7 +427,7 @@ export default function ContractRenewalModal({ contract, onClose, onSuccess, use
                     value={formData.new_position}
                     onChange={(e) => setFormData({...formData, new_position: e.target.value})}
                     placeholder="Enter new position title..."
-                    className="w-full px-3 py-2 text-xs border border-almet-bali-hai dark:border-almet-comet bg-white dark:bg-almet-cloud-burst/30 text-almet-cloud-burst dark:text-white rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
+                    className="w-full px-3 py-2 text-xs border focus:outline-none  border-almet-bali-hai dark:border-almet-comet bg-white dark:bg-almet-cloud-burst/30 text-almet-cloud-burst dark:text-white rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent"
                   />
                 </div>
               )}
@@ -441,7 +441,7 @@ export default function ContractRenewalModal({ contract, onClose, onSuccess, use
                   onChange={(e) => setFormData({...formData, comments: e.target.value})}
                   rows={3}
                   placeholder="Add any additional notes..."
-                  className="w-full px-3 py-2 text-xs border border-almet-bali-hai dark:border-almet-comet bg-white dark:bg-almet-cloud-burst/30 text-almet-cloud-burst dark:text-white rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none"
+                  className="w-full px-3 py-2 text-xs border focus:outline-none  border-almet-bali-hai dark:border-almet-comet bg-white dark:bg-almet-cloud-burst/30 text-almet-cloud-burst dark:text-white rounded-lg focus:ring-2 focus:ring-almet-sapphire focus:border-transparent resize-none"
                 />
               </div>
             </div>

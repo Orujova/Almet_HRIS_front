@@ -478,7 +478,24 @@ createTripRequestWithFiles: async (formData) => {
       throw error;
     }
   },
-
+updateTripRequest: async (id, data) => {
+    try {
+      const response = await businessTripApi.put(`/business-trips/requests/${id}/update/`, data);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
+  
+  // ✅ NEW: Delete request
+  deleteTripRequest: async (id) => {
+    try {
+      const response = await businessTripApi.delete(`/business-trips/requests/${id}/delete/`);
+      return response.data;
+    } catch (error) {
+      throw error;
+    }
+  },
   getCurrentUserEmail: () => {
     if (typeof window !== 'undefined') {
       return localStorage.getItem("user_email");
@@ -636,6 +653,29 @@ getFileIcon: (fileType) => {
   // Check if user can approve
   canApprove: (userPermissions) => {
     return BusinessTripHelpers.hasPermission(userPermissions, 'business_trips.request.approve');
+  },
+
+    canEditRequest: (request, userPermissions, currentUserId) => {
+    if (userPermissions?.is_admin) return true;
+    
+    // Only creator can edit
+    if (request.requester_id !== currentUserId) return false;
+    
+    // Only DRAFT, SUBMITTED, PENDING_LINE_MANAGER can be edited
+    const editableStatuses = ['DRAFT', 'SUBMITTED', 'PENDING_LINE_MANAGER'];
+    return editableStatuses.includes(request.status);
+  },
+  
+  // ✅ NEW: Can delete request
+  canDeleteRequest: (request, userPermissions, currentUserId) => {
+    if (userPermissions?.is_admin) return true;
+    
+    // Only creator can delete
+    if (request.requester_id !== currentUserId) return false;
+    
+    // Only DRAFT, SUBMITTED, PENDING_LINE_MANAGER can be deleted
+    const deletableStatuses = ['DRAFT', 'SUBMITTED', 'PENDING_LINE_MANAGER'];
+    return deletableStatuses.includes(request.status);
   },
 
   // Check if user can cancel trip
