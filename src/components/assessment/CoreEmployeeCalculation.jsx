@@ -107,7 +107,7 @@ const CoreEmployeeCalculation = () => {
   });
   const [userPermissions, setUserPermissions] = useState(null);
 
-// ✅ Fetch permissions on mount
+
 useEffect(() => {
   const fetchPermissions = async () => {
     try {
@@ -120,7 +120,7 @@ useEffect(() => {
   fetchPermissions();
 }, []);
 
-// ✅ Helper function
+
 const isEmployeeOnlyAccess = () => {
   return userPermissions && !userPermissions.is_admin && !userPermissions.is_manager;
 };
@@ -181,12 +181,12 @@ const isEmployeeOnlyAccess = () => {
   const getJobTitlesForPositionGroup = (positionGroupId) => {
   if (!positionGroupId) return uniqueJobTitles;
   
-  // ✅ Filter employees by position group
+ 
   const employeesInGroup = employees.filter(emp => emp.position_group_level === positionGroupId);
   
   // ✅ Get unique job titles and sort
   const jobTitlesInGroup = [...new Set(employeesInGroup.map(emp => emp.job_title).filter(Boolean))]
-    .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase(), 'az')); // ✅ Düzgün sort
+    .sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase(), 'az'));
   
   // ✅ Map to dropdown format with title case
   return jobTitlesInGroup.map((title, index) => ({ 
@@ -215,13 +215,34 @@ const isEmployeeOnlyAccess = () => {
       setEditPositionFormData(prev => ({ ...prev, job_title: '' }));
     }
   }, [editPositionFormData.position_group, employees, uniqueJobTitles]);
+const [companies, setCompanies] = useState([]);
+  const [selectedCompany, setSelectedCompany] = useState('');
 
-  // Data fetching
+  // Fetch companies
+  const fetchCompanies = async () => {
+    try {
+      const response = await api.get('/companies/');
+      setCompanies(response.data.results || []);
+    } catch (err) {
+      console.error('Error fetching companies:', err);
+    }
+  };
+
+  useEffect(() => {
+    if (userPermissions?.is_admin) {
+      fetchCompanies();
+    }
+  }, [userPermissions]);
+
   const fetchData = async () => {
     setIsLoading(true);
     setError(null);
     
     try {
+      const params = {};
+      if (selectedCompany) {
+        params.company = selectedCompany;
+      }
       const [
         positionAssessmentsRes, 
         employeeAssessmentsRes, 
@@ -231,7 +252,7 @@ const isEmployeeOnlyAccess = () => {
         skillGroupsRes
       ] = await Promise.all([
         assessmentApi.positionCore.getAll(),
-        assessmentApi.employeeCore.getAll(),
+        assessmentApi.employeeCore.getAll(params),
         assessmentApi.employees.getAll(),
         assessmentApi.positionGroups.getAll(),
         assessmentApi.coreScales.getAll(),
@@ -300,8 +321,7 @@ setUniqueJobTitles(jobTitles.map(title => ({
     }));
   };
 
-  // Employee selection handler
-  // ✅ DÜZGÜN VERSİYA
+
 const handleEmployeeChange = async (employeeId) => {
   setTemplateError(null);
   const selectedEmployee = employees.find(e => e.id === employeeId);
@@ -645,7 +665,7 @@ const handleEmployeeChange = async (employeeId) => {
     );
   };
 
-  // Data filtering
+ 
   const filteredPositionAssessments = positionAssessments.filter(assessment => 
     assessment.job_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     assessment.position_group_name?.toLowerCase().includes(searchTerm.toLowerCase())
@@ -698,7 +718,7 @@ const handleEmployeeChange = async (employeeId) => {
   </div>
 )}
 
-{/* ✅ 5. Update Filters section (around line 585) */}
+
 <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
   <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
     <div className="flex flex-col sm:flex-row gap-2 flex-1">
@@ -712,7 +732,20 @@ const handleEmployeeChange = async (employeeId) => {
           className="w-full pl-9 pr-3 py-2 border outline-0 border-gray-300 rounded-md text-sm bg-white focus:border-almet-sapphire focus:ring-1 focus:ring-almet-sapphire focus:outline-none"
         />
       </div>
-      
+      {!isEmployeeOnlyAccess() && userPermissions?.is_admin && activeTab === 'employee' && (
+              <select
+                value={selectedCompany}
+                onChange={(e) => setSelectedCompany(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:border-almet-sapphire focus:ring-1 focus:ring-almet-sapphire min-w-[160px]"
+              >
+                <option value="">All Companies</option>
+                {companies.map(company => (
+                  <option key={company.id} value={company.id}>
+                    {company.name}
+                  </option>
+                ))}
+              </select>
+            )}
       {!isEmployeeOnlyAccess() && activeTab === 'employee' && (
         <select
           value={selectedStatus}
@@ -738,7 +771,6 @@ const handleEmployeeChange = async (employeeId) => {
   </div>
 </div>
 
-      {/* Main Content */}
 <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
   {!isEmployeeOnlyAccess() && activeTab === 'position' ? (
     <div className="overflow-x-auto">

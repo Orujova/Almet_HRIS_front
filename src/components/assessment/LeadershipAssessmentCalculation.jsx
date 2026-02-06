@@ -310,11 +310,42 @@ const isEmployeeOnlyAccess = () => {
     }
   };
 
-  // Fetch all data
-  const fetchData = async () => {
-    setIsLoading(true);
-    
-    try {
+ const [companies, setCompanies] = useState([]);
+   const [selectedCompany, setSelectedCompany] = useState('');
+ 
+   // Fetch companies
+   useEffect(() => {
+     if (userPermissions?.is_admin) {
+       fetchCompanies();
+     }
+   }, [userPermissions]);
+ 
+   const fetchCompanies = async () => {
+     try {
+       const response = await api.get('/companies/');
+       setCompanies(response.data.results || []);
+     } catch (err) {
+       console.error('Error fetching companies:', err);
+     }
+   };
+ 
+ 
+ 
+   // Re-fetch when filter changes
+   useEffect(() => {
+     if (userPermissions?.is_admin) {
+       fetchData();
+     }
+   }, [selectedCompany]);
+ 
+   const fetchData = async () => {
+     setIsLoading(true);
+     try {
+       const params = {};
+       if (selectedCompany) {
+         params.company = selectedCompany;
+       }
+ 
       const [
         positionAssessmentsRes, 
         employeeAssessmentsRes, 
@@ -325,7 +356,7 @@ const isEmployeeOnlyAccess = () => {
         leadershipMainGroupsRes
       ] = await Promise.all([
         assessmentApi.positionLeadership.getAll(),
-        assessmentApi.employeeLeadership.getAll(),
+        assessmentApi.employeeLeadership.getAll(params),
         assessmentApi.employees.getAll(),
         assessmentApi.positionGroups.getAll(),
         assessmentApi.behavioralScales.getAll(),
@@ -380,11 +411,11 @@ const isEmployeeOnlyAccess = () => {
     );
     setLeadershipMainGroups(groupsWithDetails);
     
-    // ✅ Initialize child group expanded states
+ 
     const childGroupStates = {};
     groupsWithDetails.forEach(mainGroup => {
       mainGroup.child_groups?.forEach(childGroup => {
-        childGroupStates[childGroup.id] = true; // Default expanded
+        childGroupStates[childGroup.id] = true;
       });
     });
     setExpandedChildGroups(childGroupStates);
@@ -411,7 +442,7 @@ const handleEditPositionAssessment = async (assessment) => {
     setEditPositionFormData({
       id: assessment.id,
       position_group: assessment.position_group,
-      grade_levels: detailedAssessment.grade_levels || [],  // ✅ From detailed
+      grade_levels: detailedAssessment.grade_levels || [],  
       competency_ratings: detailedAssessment.competency_ratings?.map(rating => ({
         leadership_item_id: rating.leadership_item,
         required_level: rating.required_level
@@ -819,7 +850,20 @@ const toggleChildGroup = (groupId) => {
               className="w-full pl-9 pr-3 py-2 border outline-0 border-gray-300 rounded-md text-sm bg-white focus:border-almet-sapphire focus:ring-1 focus:ring-almet-sapphire focus:outline-none"
             />
           </div>
-          
+            {!isEmployeeOnlyAccess() && userPermissions?.is_admin && activeTab === 'employee' && (
+              <select
+                value={selectedCompany}
+                onChange={(e) => setSelectedCompany(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:border-almet-sapphire focus:ring-1 focus:ring-almet-sapphire min-w-[160px]"
+              >
+                <option value="">All Companies</option>
+                {companies.map(company => (
+                  <option key={company.id} value={company.id}>
+                    {company.name}
+                  </option>
+                ))}
+              </select>
+            )}
           {!isEmployeeOnlyAccess() && activeTab === 'employee' && (
             <select
               value={selectedStatus}

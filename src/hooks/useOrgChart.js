@@ -187,141 +187,186 @@ export const useOrgChart = () => {
   }, [activeFilters]);
 
 
+  const filterOptions = useMemo(() => {
 
-const filterOptions = useMemo(() => {
-    // ✅ CRITICAL FIX: Use fullTree if available, otherwise orgChart
     const dataSource = (fullTree && fullTree.length > 0) ? fullTree : orgChart;
     
     console.log('🔍 Filter options building from:', {
         source: fullTree.length > 0 ? 'fullTree' : 'orgChart',
         totalItems: dataSource?.length || 0,
-        employees: dataSource?.filter(e => !e.employee_details?.is_vacancy).length || 0,
-        vacancies: dataSource?.filter(e => e.employee_details?.is_vacancy).length || 0
+        employees: dataSource?.filter(e => !e.employee_details?.is_vacancy && !e.is_vacancy).length || 0,
+        vacancies: dataSource?.filter(e => e.employee_details?.is_vacancy || e.is_vacancy).length || 0
     });
     
-    // Build from employee/vacancy data directly if reference data is missing
-    const buildFromData = (field) => {
+   
+    const getFieldValue = (item, field) => {
+        if (!item) return null;
+        
+        // Try direct field first
+        if (item[field]) return item[field];
+        
+        // Try _name suffix (for vacancies)
+        const nameField = `${field}_name`;
+        if (item[nameField]) return item[nameField];
+        
+        // Try nested in department/unit/etc
+        if (item.department && item.department[field]) return item.department[field];
+        if (item.unit && item.unit[field]) return item.unit[field];
+        
+        return null;
+    };
+    
+  
+    const buildFilterOptions = (field) => {
         if (!Array.isArray(dataSource) || dataSource.length === 0) return [];
         
-        const uniqueValues = new Map();
+        const valueCounts = new Map();
         
         dataSource.forEach(item => {
             if (!item) return;
             
-            // ✅ Handle both regular field and _name field (for vacancies)
-            let value = item[field];
-            if (!value && field.indexOf('_name') === -1) {
-                value = item[`${field}_name`];
-            }
+            const value = getFieldValue(item, field);
             
             if (value) {
-                const valueStr = String(value);
-                if (!uniqueValues.has(valueStr)) {
-                    uniqueValues.set(valueStr, 0);
+                const valueStr = String(value).trim();
+                if (valueStr) {
+                    valueCounts.set(valueStr, (valueCounts.get(valueStr) || 0) + 1);
                 }
-                uniqueValues.set(valueStr, uniqueValues.get(valueStr) + 1);
             }
         });
         
-        return Array.from(uniqueValues.entries())
+        return Array.from(valueCounts.entries())
             .map(([value, count]) => ({
                 value: value,
                 label: value,
                 count: count
             }))
-            .sort((a, b) => b.count - a.count);
+            .sort((a, b) => b.count - a.count); // Sort by count descending
     };
 
     const options = {
-        // Companies - ✅ Handle both employee and vacancy format
+        // ✅ Business Functions - Combines employees and vacancies
         businessFunctions: businessFunctionsDropdown && businessFunctionsDropdown.length > 0
             ? businessFunctionsDropdown.map(bf => {
-                const count = dataSource?.filter(item => 
-                    item.business_function === bf.label || 
-                    item.business_function_name === bf.label
-                ).length || 0;
+                // Count both employees and vacancies with this business function
+                const count = dataSource?.filter(item => {
+                    const bfValue = getFieldValue(item, 'business_function');
+                    return bfValue === bf.label;
+                }).length || 0;
+                
                 return {
                     value: bf.label,
                     label: bf.label,
                     count: count
                 };
             }).filter(opt => opt.count > 0)
-            : buildFromData('business_function'),
+            : buildFilterOptions('business_function'),
         
-        // Departments - ✅ Handle both formats
+        // ✅ Departments - Combines employees and vacancies
         departments: departmentsDropdown && departmentsDropdown.length > 0
             ? departmentsDropdown.map(dept => {
-                const count = dataSource?.filter(item => 
-                    item.department === dept.label || 
-                    item.department_name === dept.label
-                ).length || 0;
+                const count = dataSource?.filter(item => {
+                    const deptValue = getFieldValue(item, 'department');
+                    return deptValue === dept.label;
+                }).length || 0;
+                
                 return {
                     value: dept.label,
                     label: dept.label,
                     count: count
                 };
             }).filter(opt => opt.count > 0)
-            : buildFromData('department'),
+            : buildFilterOptions('department'),
         
-        // Units - ✅ Handle both formats
+        // ✅ Units - Combines employees and vacancies
         units: unitsDropdown && unitsDropdown.length > 0
             ? unitsDropdown.map(unit => {
-                const count = dataSource?.filter(item => 
-                    item.unit === unit.label || 
-                    item.unit_name === unit.label
-                ).length || 0;
+                const count = dataSource?.filter(item => {
+                    const unitValue = getFieldValue(item, 'unit');
+                    return unitValue === unit.label;
+                }).length || 0;
+                
                 return {
                     value: unit.label,
                     label: unit.label,
                     count: count
                 };
             }).filter(opt => opt.count > 0)
-            : buildFromData('unit'),
+            : buildFilterOptions('unit'),
         
-        // Position Groups - ✅ Handle both formats
+        // ✅ Position Groups - Combines employees and vacancies
         positionGroups: positionGroupsDropdown && positionGroupsDropdown.length > 0
             ? positionGroupsDropdown.map(pg => {
-                const count = dataSource?.filter(item => 
-                    item.position_group === pg.label || 
-                    item.position_group_name === pg.label
-                ).length || 0;
+                const count = dataSource?.filter(item => {
+                    const pgValue = getFieldValue(item, 'position_group');
+                    return pgValue === pg.label;
+                }).length || 0;
+                
                 return {
                     value: pg.label,
                     label: pg.label,
                     count: count
                 };
             }).filter(opt => opt.count > 0)
-            : buildFromData('position_group'),
+            : buildFilterOptions('position_group'),
         
-        // Statuses - ✅ Include vacancies
+        // ✅ Statuses - Both employees and vacancy statuses
         statuses: employeeStatusesDropdown && employeeStatusesDropdown.length > 0
             ? employeeStatusesDropdown.map(status => {
-                const count = dataSource?.filter(item => item.status === status.label).length || 0;
+                const count = dataSource?.filter(item => {
+                    // For employees, check status field
+                    if (!item.employee_details?.is_vacancy && !item.is_vacancy) {
+                        return item.status === status.label;
+                    }
+                    // For vacancies, check vacancy_status
+                    return item.vacancy_status === status.label;
+                }).length || 0;
+                
                 return {
                     value: status.label,
                     label: status.label,
                     count: count
                 };
             }).filter(opt => opt.count > 0)
-            : buildFromData('status'),
+            : buildFilterOptions('status'),
         
         // Job Functions
-        jobFunctions: buildFromData('job_function'),
+        jobFunctions: buildFilterOptions('job_function'),
         
         // Grading Levels
-        gradingLevels: buildFromData('grading_level'),
+        gradingLevels: buildFilterOptions('grading_level'),
         
-        // Genders
-        genders: buildFromData('gender'),
+        // Genders - Only for employees
+        genders: (() => {
+            const genderCounts = new Map();
+            
+            dataSource
+                .filter(item => !item.employee_details?.is_vacancy && !item.is_vacancy) // Only employees
+                .forEach(item => {
+                    if (item.gender) {
+                        const gender = String(item.gender).trim();
+                        genderCounts.set(gender, (genderCounts.get(gender) || 0) + 1);
+                    }
+                });
+            
+            return Array.from(genderCounts.entries())
+                .map(([value, count]) => ({
+                    value: value,
+                    label: value,
+                    count: count
+                }))
+                .sort((a, b) => b.count - a.count);
+        })(),
         
-        // Managers - ✅ Only from employees, not vacancies
+        // ✅ Managers - Only from employees (vacancies cannot be managers)
         managers: Array.isArray(dataSource)
             ? dataSource
                 .filter(item => 
                     item && 
                     item.direct_reports && 
                     item.direct_reports > 0 &&
-                    !item.employee_details?.is_vacancy // ✅ Exclude vacancies
+                    !item.employee_details?.is_vacancy && // ✅ Exclude vacancies
+                    !item.is_vacancy
                 )
                 .map(manager => ({
                     value: manager.employee_id,
@@ -336,20 +381,20 @@ const filterOptions = useMemo(() => {
         businessFunctions: options.businessFunctions.length,
         departments: options.departments.length,
         units: options.units.length,
-        positionGroups: options.positionGroups.length
+        positionGroups: options.positionGroups.length,
+        managers: options.managers.length
     });
 
     return options;
 }, [
     orgChart,
-    fullTree, // ✅ Add fullTree as dependency
+    fullTree, // ✅ Critical dependency
     businessFunctionsDropdown,
     departmentsDropdown,
     unitsDropdown,
     positionGroupsDropdown,
     employeeStatusesDropdown
 ]);
-
 
 
 

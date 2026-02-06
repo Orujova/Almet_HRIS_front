@@ -182,7 +182,7 @@ const BehavioralAssessmentCalculation = () => {
     }
   };
 
-  // ✅ Sadələşdirilmiş MultiSelect handler
+ 
   const handleGradeLevelMultiSelectChange = (fieldName, value) => {
     setSelectedGradeLevels(prev => {
       const newSelection = prev.includes(value)
@@ -198,7 +198,7 @@ const BehavioralAssessmentCalculation = () => {
     });
   };
 
-  // Edit üçün eyni dəyişikliklər
+ 
   const handleEditPositionGroupChange = async (positionGroupId) => {
     if (!positionGroupId) {
       setEditGradeLevels([]);
@@ -248,8 +248,7 @@ const BehavioralAssessmentCalculation = () => {
     });
   };
 
-  // CRUD Operations
-  // ✅ handleEditPositionAssessment - grade_levels düzgün yüklənməsi
+
 const handleEditPositionAssessment = async (assessment) => {
   try {
     const detailedAssessment = await assessmentApi.positionBehavioral.getById(assessment.id);
@@ -259,7 +258,7 @@ const handleEditPositionAssessment = async (assessment) => {
     setEditPositionFormData({
       id: assessment.id,
       position_group: assessment.position_group,
-      grade_levels: detailedAssessment.grade_levels || [],  // ✅ Detailed-dən götür
+      grade_levels: detailedAssessment.grade_levels || [],  
       competency_ratings: detailedAssessment.competency_ratings?.map(rating => ({
         behavioral_competency_id: rating.behavioral_competency,
         required_level: rating.required_level
@@ -291,7 +290,7 @@ const handleUpdatePositionAssessment = async () => {
     return;
   }
 
-  // ✅ Grade levels yoxlaması
+
   const gradeLevelsToSend = editSelectedGradeLevels.length > 0 
     ? editSelectedGradeLevels 
     : editPositionFormData.grade_levels;
@@ -392,9 +391,7 @@ const handleUpdatePositionAssessment = async () => {
     }
   };
 
- 
 
-  // Auto-select position assessment for employee
   const handleEmployeeChange = async (employeeId) => {
     setTemplateError(null);
     const selectedEmployee = employees.find(e => e.id === employeeId);
@@ -458,11 +455,42 @@ const handleUpdatePositionAssessment = async () => {
     }
   };
 
-  // Fetch all data
+const [companies, setCompanies] = useState([]);
+  const [selectedCompany, setSelectedCompany] = useState('');
+
+  // Fetch companies
+  useEffect(() => {
+    if (userPermissions?.is_admin) {
+      fetchCompanies();
+    }
+  }, [userPermissions]);
+
+  const fetchCompanies = async () => {
+    try {
+      const response = await api.get('/companies/');
+      setCompanies(response.data.results || []);
+    } catch (err) {
+      console.error('Error fetching companies:', err);
+    }
+  };
+
+
+
+  // Re-fetch when filter changes
+  useEffect(() => {
+    if (userPermissions?.is_admin) {
+      fetchData();
+    }
+  }, [selectedCompany]);
+
   const fetchData = async () => {
     setIsLoading(true);
-    
     try {
+      const params = {};
+      if (selectedCompany) {
+        params.company = selectedCompany;
+      }
+
       const [
         positionAssessmentsRes, 
         employeeAssessmentsRes, 
@@ -473,7 +501,7 @@ const handleUpdatePositionAssessment = async () => {
         behavioralGroupsRes
       ] = await Promise.all([
         assessmentApi.positionBehavioral.getAll(),
-        assessmentApi.employeeBehavioral.getAll(),
+        assessmentApi.employeeBehavioral.getAll(params),
         assessmentApi.employees.getAll(),
         assessmentApi.positionGroups.getAll(),
         assessmentApi.behavioralScales.getAll(),
@@ -544,9 +572,6 @@ const handleUpdatePositionAssessment = async () => {
   };
 
 
-// BehavioralAssessmentCalculation.jsx
-
-// ✅ DÜZƏLIŞLIK: handleCreateEmployeeAssessment
 const handleCreateEmployeeAssessment = async (isDraft = true) => {
   if (!employeeFormData.employee || !employeeFormData.position_assessment) {
     showError('Please select employee and ensure position template is loaded');
@@ -555,7 +580,7 @@ const handleCreateEmployeeAssessment = async (isDraft = true) => {
 
   setIsSubmitting(true);
   try {
-    // ✅ Behavioral competency ratings
+    
     const competencyRatings = employeeFormData.competency_ratings.map(rating => ({
       behavioral_competency_id: parseInt(rating.behavioral_competency_id),
       actual_level: parseInt(rating.actual_level) || 0,
@@ -596,13 +621,13 @@ const handleCreateEmployeeAssessment = async (isDraft = true) => {
   }
 };
 
-// ✅ DÜZƏLIŞLIK: handleUpdateEmployeeAssessment
+
 const handleUpdateEmployeeAssessment = async (isDraft = true) => {
   if (!editFormData.id) return;
 
   setIsSubmitting(true);
   try {
-    // ✅ Behavioral competency ratings
+   
     const competencyRatings = editFormData.competency_ratings.map(rating => ({
       behavioral_competency_id: parseInt(rating.behavioral_competency_id),
       actual_level: parseInt(rating.actual_level) || 0,
@@ -772,7 +797,7 @@ const handleUpdateEmployeeAssessment = async (isDraft = true) => {
   </div>
 )}
 
-{/* ✅ 5. Update Filters section (around line 585) */}
+
 <div className="bg-white rounded-lg p-4 shadow-sm border border-gray-200">
   <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
     <div className="flex flex-col sm:flex-row gap-2 flex-1">
@@ -786,7 +811,20 @@ const handleUpdateEmployeeAssessment = async (isDraft = true) => {
           className="w-full pl-9 pr-3 py-2 border outline-0 border-gray-300 rounded-md text-sm bg-white focus:border-almet-sapphire focus:ring-1 focus:ring-almet-sapphire focus:outline-none"
         />
       </div>
-      
+        {!isEmployeeOnlyAccess() && userPermissions?.is_admin && activeTab === 'employee' && (
+              <select
+                value={selectedCompany}
+                onChange={(e) => setSelectedCompany(e.target.value)}
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm bg-white focus:border-almet-sapphire focus:ring-1 focus:ring-almet-sapphire min-w-[160px]"
+              >
+                <option value="">All Companies</option>
+                {companies.map(company => (
+                  <option key={company.id} value={company.id}>
+                    {company.name}
+                  </option>
+                ))}
+              </select>
+            )}
       {!isEmployeeOnlyAccess() && activeTab === 'employee' && (
         <select
           value={selectedStatus}
@@ -812,7 +850,7 @@ const handleUpdateEmployeeAssessment = async (isDraft = true) => {
   </div>
 </div>
 
-      {/* Main Content Table */}
+
 <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
   {!isEmployeeOnlyAccess() && activeTab === 'position' ? (
     <div className="overflow-x-auto">
@@ -954,7 +992,7 @@ const handleUpdateEmployeeAssessment = async (isDraft = true) => {
             </div>
             
             <div className="p-4 overflow-y-auto max-h-[calc(90vh-140px)]">
-              {/* ✅ 2 column grid - job title yoxdur */}
+        
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4 p-4 bg-gray-50 rounded-lg">
                 <div>
                   <label className="block text-xs font-medium text-gray-700 mb-1.5">
@@ -1028,7 +1066,7 @@ const handleUpdateEmployeeAssessment = async (isDraft = true) => {
                 </div>
               )}
 
-              {/* Competency ratings section - dəyişməz */}
+          
               <div className="flex items-center justify-between mb-3">
                 <h4 className="text-sm font-medium text-gray-900">Competency Ratings</h4>
                 <button onClick={() => setShowScalesInfo(!showScalesInfo)} className="text-xs text-almet-sapphire hover:text-almet-astral flex items-center gap-1">
@@ -1131,7 +1169,7 @@ const handleUpdateEmployeeAssessment = async (isDraft = true) => {
         </div>
       )}
 
-      {/* Edit Position Modal - Eyni şəkildə sadələşdirilir */}
+      
       {showEditPositionModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg w-full max-w-5xl max-h-[90vh] overflow-hidden shadow-xl">
@@ -1269,7 +1307,7 @@ const handleUpdateEmployeeAssessment = async (isDraft = true) => {
         </div>
       )}
 
-      {/* Create Employee Assessment Modal */}
+      
       {showCreateEmployeeModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden shadow-xl">
@@ -1439,7 +1477,7 @@ const handleUpdateEmployeeAssessment = async (isDraft = true) => {
         </div>
       )}
 
-      {/* Edit Employee Assessment Modal */}
+    
       {showEditEmployeeModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg w-full max-w-6xl max-h-[90vh] overflow-hidden shadow-xl">
@@ -1748,7 +1786,7 @@ const handleUpdateEmployeeAssessment = async (isDraft = true) => {
         </div>
       )}
 
-      {/* Confirmation Modal - dəyişməz */}
+   
       <ConfirmationModal
         isOpen={confirmModal.isOpen}
         onClose={() => setConfirmModal({ ...confirmModal, isOpen: false })}
