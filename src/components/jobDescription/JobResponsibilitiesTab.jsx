@@ -282,29 +282,45 @@ const JobResponsibilitiesTab = ({
     loadLeadershipHierarchical();
   }, [dropdownData.leadershipMainGroups, isLeadershipPosition]);
 
-  // 🔥 FORCE RE-RENDER: Skills component when data is ready in edit mode
-  useEffect(() => {
-    if (isEditMode && skillGroupsHierarchical.length > 0 && formData.required_skills_data?.length > 0) {
-      console.log('🔄 Forcing re-render of skills component');
-      setSkillsComponentKey(prev => prev + 1);
+// 🔥 NEW: Helper function to format IDs for component
+const formatIdsForComponent = (ids, prefix) => {
+  if (!ids || !Array.isArray(ids)) return [];
+  
+  return ids.map(id => {
+    const idStr = String(id);
+    // Əgər artıq prefix varsa, əlavə etmə
+    if (idStr.startsWith(`${prefix}_`)) {
+      return idStr;
     }
-  }, [skillGroupsHierarchical.length, isEditMode]);
+    // Əks halda prefix əlavə et
+    return `${prefix}_${idStr}`;
+  });
+};
 
-  // 🔥 FORCE RE-RENDER: Behavioral component when data is ready in edit mode
-  useEffect(() => {
-    if (isEditMode && behavioralGroupsHierarchical.length > 0 && formData.behavioral_competencies_data?.length > 0) {
-      console.log('🔄 Forcing re-render of behavioral component');
-      setBehavioralComponentKey(prev => prev + 1);
-    }
-  }, [behavioralGroupsHierarchical.length, isEditMode]);
+// 🔥 FIXED: Skills için formatted IDs
+useEffect(() => {
+  if (isEditMode && skillGroupsHierarchical.length > 0 && formData.required_skills_data?.length > 0) {
+    console.log('🔄 Forcing re-render of skills component with formatted IDs');
+    setSkillsComponentKey(prev => prev + 1);
+  }
+}, [skillGroupsHierarchical.length, isEditMode]);
 
-  // 🔥 FORCE RE-RENDER: Leadership component when data is ready in edit mode
-  useEffect(() => {
-    if (isEditMode && isLeadershipPosition && leadershipGroupsHierarchical.length > 0 && formData.leadership_competencies_data?.length > 0) {
-      console.log('🔄 Forcing re-render of leadership component');
-      setLeadershipComponentKey(prev => prev + 1);
-    }
-  }, [leadershipGroupsHierarchical.length, isEditMode, isLeadershipPosition]);
+// 🔥 FIXED: Behavioral için formatted IDs
+useEffect(() => {
+  if (isEditMode && behavioralGroupsHierarchical.length > 0 && formData.behavioral_competencies_data?.length > 0) {
+    console.log('🔄 Forcing re-render of behavioral component with formatted IDs');
+    setBehavioralComponentKey(prev => prev + 1);
+  }
+}, [behavioralGroupsHierarchical.length, isEditMode]);
+
+// 🔥 FIXED: Leadership için formatted IDs
+useEffect(() => {
+  if (isEditMode && isLeadershipPosition && leadershipGroupsHierarchical.length > 0 && formData.leadership_competencies_data?.length > 0) {
+    console.log('🔄 Forcing re-render of leadership component with formatted IDs');
+    setLeadershipComponentKey(prev => prev + 1);
+  }
+}, [leadershipGroupsHierarchical.length, isEditMode, isLeadershipPosition]);
+
 
   // 🔥 Log hierarchical data when loaded
   useEffect(() => {
@@ -436,101 +452,101 @@ const JobResponsibilitiesTab = ({
       ))}
 
       {/* Technical Skills */}
-      <div>
-        <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-          Technical Skills <span className="text-red-500">*</span>
-        </label>
-        
-        {isLoadingSkills ? (
+     <div>
+      <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
+        Technical Skills <span className="text-red-500">*</span>
+      </label>
+      
+      {isLoadingSkills ? (
+        <div className={`p-4 ${bgAccent} rounded-lg border ${borderColor} flex items-center justify-center gap-2`}>
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-almet-sapphire"></div>
+          <span className={`text-sm ${textSecondary}`}>Loading skill groups...</span>
+        </div>
+      ) : (
+        <HierarchicalMultiSelect
+          key={`skills-${skillsComponentKey}`}
+          title="Skills"
+          icon={() => (
+            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z" />
+            </svg>
+          )}
+          data={skillGroupsHierarchical}
+          selectedIds={formatIdsForComponent(formData.required_skills_data || [], 'skill')} // 🔥 FIXED
+          onChange={handleSkillsChange}
+          searchPlaceholder="Search skills and groups..."
+          emptyMessage="No skill groups available"
+          darkMode={darkMode}
+          idPrefix="skill"
+        />
+      )}
+      
+      {validationErrors.required_skills_data && (
+        <p className="text-red-500 text-xs mt-1">{validationErrors.required_skills_data}</p>
+      )}
+    </div>
+
+    {/* Behavioral/Leadership Competencies */}
+    <div>
+      <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
+        {isLeadershipPosition ? 'Leadership Competencies' : 'Behavioral Competencies'} 
+        <span className="text-red-500">*</span>
+      </label>
+      
+      {isLeadershipPosition ? (
+        // LEADERSHIP COMPETENCIES (3-LEVEL)
+        isLoadingLeadership ? (
           <div className={`p-4 ${bgAccent} rounded-lg border ${borderColor} flex items-center justify-center gap-2`}>
-            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-almet-sapphire"></div>
-            <span className={`text-sm ${textSecondary}`}>Loading skill groups...</span>
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+            <span className={`text-sm ${textSecondary}`}>Loading leadership competencies...</span>
           </div>
         ) : (
           <HierarchicalMultiSelect
-            key={`skills-${skillsComponentKey}`}
-            title="Skills"
+            key={`leadership-${leadershipComponentKey}`}
+            title="Leadership Competencies"
+            icon={() => <Award className="w-4 h-4" />}
+            data={leadershipGroupsHierarchical}
+            selectedIds={formatIdsForComponent(formData.leadership_competencies_data || [], 'item')} // 🔥 FIXED
+            onChange={handleCompetenciesChange}
+            searchPlaceholder="Search leadership competencies..."
+            emptyMessage="No leadership competencies available"
+            darkMode={darkMode}
+            idPrefix="item"
+          />
+        )
+      ) : (
+        // BEHAVIORAL COMPETENCIES (2-LEVEL)
+        isLoadingCompetencies ? (
+          <div className={`p-4 ${bgAccent} rounded-lg border ${borderColor} flex items-center justify-center gap-2`}>
+            <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
+            <span className={`text-sm ${textSecondary}`}>Loading behavioral competencies...</span>
+          </div>
+        ) : (
+          <HierarchicalMultiSelect
+            key={`behavioral-${behavioralComponentKey}`}
+            title="Competencies"
             icon={() => (
               <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.026 9.026 0 007 14.935v-3.957l1.818.78a3 3 0 002.364 0l5.508-2.361a11.026 11.026 0 01.25 3.762 1 1 0 01-.89.89 8.968 8.968 0 00-5.35 2.524 1 1 0 01-1.4 0zM6 18a1 1 0 001-1v-2.065a8.935 8.935 0 00-2-.712V17a1 1 0 001 1z" />
+                <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
               </svg>
             )}
-            data={skillGroupsHierarchical}
-            selectedIds={formData.required_skills_data || []}
-            onChange={handleSkillsChange}
-            searchPlaceholder="Search skills and groups..."
-            emptyMessage="No skill groups available"
+            data={behavioralGroupsHierarchical}
+            selectedIds={formatIdsForComponent(formData.behavioral_competencies_data || [], 'item')} // 🔥 FIXED
+            onChange={(selectedIds) => {
+              console.log('📝 Behavioral onChange called:', {
+                newSelectedIds: selectedIds,
+                previousIds: formData.behavioral_competencies_data
+              });
+              handleCompetenciesChange(selectedIds);
+            }}
+            searchPlaceholder="Search competencies and groups..."
+            emptyMessage="No competency groups available"
             darkMode={darkMode}
-            idPrefix="skill"
+            idPrefix="item"
           />
-        )}
-        
-        {validationErrors.required_skills_data && (
-          <p className="text-red-500 text-xs mt-1">{validationErrors.required_skills_data}</p>
-        )}
-      </div>
-
-      {/* 🔥 DYNAMIC: Leadership OR Behavioral Competencies */}
-      <div>
-        <label className={`block text-sm font-medium ${textSecondary} mb-2`}>
-          {isLeadershipPosition ? 'Leadership Competencies' : 'Behavioral Competencies'} 
-          <span className="text-red-500">*</span>
-        </label>
-        
-        {isLeadershipPosition ? (
-          // LEADERSHIP COMPETENCIES (3-LEVEL)
-          isLoadingLeadership ? (
-            <div className={`p-4 ${bgAccent} rounded-lg border ${borderColor} flex items-center justify-center gap-2`}>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
-              <span className={`text-sm ${textSecondary}`}>Loading leadership competencies...</span>
-            </div>
-          ) : (
-            <HierarchicalMultiSelect
-  key={`leadership-${leadershipComponentKey}`}
-  title="Leadership Competencies"
-  icon={() => <Award className="w-4 h-4" />}
-  data={leadershipGroupsHierarchical}
-  selectedIds={formData.leadership_competencies_data || []}
-  onChange={handleCompetenciesChange}
-  searchPlaceholder="Search leadership competencies..."
-  emptyMessage="No leadership competencies available"
-  darkMode={darkMode}
-  idPrefix="item"  // 🔥 ƏLAVƏ EDİN
-/>
-          )
-        ) : (
-          // BEHAVIORAL COMPETENCIES (2-LEVEL)
-          isLoadingCompetencies ? (
-            <div className={`p-4 ${bgAccent} rounded-lg border ${borderColor} flex items-center justify-center gap-2`}>
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-purple-600"></div>
-              <span className={`text-sm ${textSecondary}`}>Loading behavioral competencies...</span>
-            </div>
-          ) : (
-            
-<HierarchicalMultiSelect
-  key={`behavioral-${behavioralComponentKey}`}
-  title="Competencies"
-  icon={() => (
-    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-      <path d="M13 6a3 3 0 11-6 0 3 3 0 016 0zM18 8a2 2 0 11-4 0 2 2 0 014 0zM14 15a4 4 0 00-8 0v3h8v-3zM6 8a2 2 0 11-4 0 2 2 0 014 0zM16 18v-3a5.972 5.972 0 00-.75-2.906A3.005 3.005 0 0119 15v3h-3zM4.75 12.094A5.973 5.973 0 004 15v3H1v-3a3 3 0 013.75-2.906z" />
-    </svg>
-  )}
-  data={behavioralGroupsHierarchical}
-  selectedIds={formData.behavioral_competencies_data || []}
-  onChange={(selectedIds) => {
-    console.log('🔄 Behavioral onChange called:', {
-      newSelectedIds: selectedIds,
-      previousIds: formData.behavioral_competencies_data
-    });
-    handleCompetenciesChange(selectedIds);
-  }}
-  searchPlaceholder="Search competencies and groups..."
-  emptyMessage="No competency groups available"
-  darkMode={darkMode}
-  idPrefix="item"  // 🔥 ƏLAVƏ EDİN (behavioral üçün də item prefix istifadə edirsiz)
-/>
-          )
-        )}
+        )
+      )}
+    
         
         {validationErrors.behavioral_competencies_data && (
           <p className="text-red-500 text-xs mt-1">{validationErrors.behavioral_competencies_data}</p>

@@ -518,7 +518,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                       name="start_date"
                       value={formData.start_date}
                       onChange={handleInputChange}
-                      className={`w-full outline-0 focus:outline-none  pl-10 pr-3 py-2 text-sm border rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
+                      className={`w-full outline-0 focus:outline-none   pl-10 pr-3 py-2 text-sm border rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${
                         errors.start_date ? 'border-red-500' : 'border-almet-bali-hai dark:border-gray-700'
                       }`}
                       required
@@ -629,7 +629,7 @@ const CreateHandoverModal = ({ onClose, onSuccess, user }) => {
                             <textarea
                               value={task.description}
                               onChange={(e) => handleTaskChange(index, 'description', e.target.value)}
-                              className="w-full outline-0 px-3 py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                              className="w-full outline-0 px-3 focus:outline-none  py-2 text-sm border border-almet-bali-hai dark:border-gray-700 rounded-lg focus:ring-1 focus:ring-almet-sapphire focus:border-transparent resize-none bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
                               rows="2"
                               placeholder="Enter task description..."
                               required

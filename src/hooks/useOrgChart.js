@@ -6,7 +6,6 @@ import {
   fetchOrgChart,
   fetchOrgChartEmployee,
   fetchFullTreeWithVacancies,
-  
   searchOrgChart,
   fetchManagerTeam,
   setFilters,
@@ -38,7 +37,6 @@ import {
   selectHierarchy,
   selectFilters,
   selectActiveFilters,
-  selectUIState,
   selectViewMode,
   selectShowFilters,
   selectShowLegend,
@@ -52,11 +50,10 @@ import {
   selectPagination,
   selectFilteredOrgChart,
   selectOrgChartForReactFlow,
-
   selectOrgChartSummary
 } from '../store/slices/orgChartSlice';
 
-// FIXED: Clean employee data utility
+
 const cleanEmployeeData = (employee) => {
   if (!employee) return null;
   
@@ -191,23 +188,38 @@ export const useOrgChart = () => {
 
 
 
-// 2. FIXED: If dropdowns are empty, build from orgChart data directly
-
 const filterOptions = useMemo(() => {
+    // ✅ CRITICAL FIX: Use fullTree if available, otherwise orgChart
+    const dataSource = (fullTree && fullTree.length > 0) ? fullTree : orgChart;
     
-    // Build from employee data directly if reference data is missing
-    const buildFromEmployeeData = (field) => {
-        if (!Array.isArray(orgChart) || orgChart.length === 0) return [];
+    console.log('🔍 Filter options building from:', {
+        source: fullTree.length > 0 ? 'fullTree' : 'orgChart',
+        totalItems: dataSource?.length || 0,
+        employees: dataSource?.filter(e => !e.employee_details?.is_vacancy).length || 0,
+        vacancies: dataSource?.filter(e => e.employee_details?.is_vacancy).length || 0
+    });
+    
+    // Build from employee/vacancy data directly if reference data is missing
+    const buildFromData = (field) => {
+        if (!Array.isArray(dataSource) || dataSource.length === 0) return [];
         
         const uniqueValues = new Map();
         
-        orgChart.forEach(emp => {
-            if (emp && emp[field]) {
-                const value = String(emp[field]);
-                if (!uniqueValues.has(value)) {
-                    uniqueValues.set(value, 0);
+        dataSource.forEach(item => {
+            if (!item) return;
+            
+            // ✅ Handle both regular field and _name field (for vacancies)
+            let value = item[field];
+            if (!value && field.indexOf('_name') === -1) {
+                value = item[`${field}_name`];
+            }
+            
+            if (value) {
+                const valueStr = String(value);
+                if (!uniqueValues.has(valueStr)) {
+                    uniqueValues.set(valueStr, 0);
                 }
-                uniqueValues.set(value, uniqueValues.get(value) + 1);
+                uniqueValues.set(valueStr, uniqueValues.get(valueStr) + 1);
             }
         });
         
@@ -221,79 +233,96 @@ const filterOptions = useMemo(() => {
     };
 
     const options = {
-        // Companies
+        // Companies - ✅ Handle both employee and vacancy format
         businessFunctions: businessFunctionsDropdown && businessFunctionsDropdown.length > 0
             ? businessFunctionsDropdown.map(bf => {
-                const count = orgChart?.filter(emp => emp.business_function === bf.label).length || 0;
+                const count = dataSource?.filter(item => 
+                    item.business_function === bf.label || 
+                    item.business_function_name === bf.label
+                ).length || 0;
                 return {
                     value: bf.label,
                     label: bf.label,
                     count: count
                 };
             }).filter(opt => opt.count > 0)
-            : buildFromEmployeeData('business_function'),
+            : buildFromData('business_function'),
         
-        // Departments
+        // Departments - ✅ Handle both formats
         departments: departmentsDropdown && departmentsDropdown.length > 0
             ? departmentsDropdown.map(dept => {
-                const count = orgChart?.filter(emp => emp.department === dept.label).length || 0;
+                const count = dataSource?.filter(item => 
+                    item.department === dept.label || 
+                    item.department_name === dept.label
+                ).length || 0;
                 return {
                     value: dept.label,
                     label: dept.label,
                     count: count
                 };
             }).filter(opt => opt.count > 0)
-            : buildFromEmployeeData('department'),
+            : buildFromData('department'),
         
-        // Units
+        // Units - ✅ Handle both formats
         units: unitsDropdown && unitsDropdown.length > 0
             ? unitsDropdown.map(unit => {
-                const count = orgChart?.filter(emp => emp.unit === unit.label).length || 0;
+                const count = dataSource?.filter(item => 
+                    item.unit === unit.label || 
+                    item.unit_name === unit.label
+                ).length || 0;
                 return {
                     value: unit.label,
                     label: unit.label,
                     count: count
                 };
             }).filter(opt => opt.count > 0)
-            : buildFromEmployeeData('unit'),
+            : buildFromData('unit'),
         
-        // Position Groups
+        // Position Groups - ✅ Handle both formats
         positionGroups: positionGroupsDropdown && positionGroupsDropdown.length > 0
             ? positionGroupsDropdown.map(pg => {
-                const count = orgChart?.filter(emp => emp.position_group === pg.label).length || 0;
+                const count = dataSource?.filter(item => 
+                    item.position_group === pg.label || 
+                    item.position_group_name === pg.label
+                ).length || 0;
                 return {
                     value: pg.label,
                     label: pg.label,
                     count: count
                 };
             }).filter(opt => opt.count > 0)
-            : buildFromEmployeeData('position_group'),
+            : buildFromData('position_group'),
         
-        // Statuses
+        // Statuses - ✅ Include vacancies
         statuses: employeeStatusesDropdown && employeeStatusesDropdown.length > 0
             ? employeeStatusesDropdown.map(status => {
-                const count = orgChart?.filter(emp => emp.status === status.label).length || 0;
+                const count = dataSource?.filter(item => item.status === status.label).length || 0;
                 return {
                     value: status.label,
                     label: status.label,
                     count: count
                 };
             }).filter(opt => opt.count > 0)
-            : buildFromEmployeeData('status'),
+            : buildFromData('status'),
         
         // Job Functions
-        jobFunctions: buildFromEmployeeData('job_function'),
+        jobFunctions: buildFromData('job_function'),
         
         // Grading Levels
-        gradingLevels: buildFromEmployeeData('grading_level'),
+        gradingLevels: buildFromData('grading_level'),
         
         // Genders
-        genders: buildFromEmployeeData('gender'),
+        genders: buildFromData('gender'),
         
-        // Managers
-        managers: Array.isArray(orgChart)
-            ? orgChart
-                .filter(emp => emp && emp.direct_reports && emp.direct_reports > 0)
+        // Managers - ✅ Only from employees, not vacancies
+        managers: Array.isArray(dataSource)
+            ? dataSource
+                .filter(item => 
+                    item && 
+                    item.direct_reports && 
+                    item.direct_reports > 0 &&
+                    !item.employee_details?.is_vacancy // ✅ Exclude vacancies
+                )
                 .map(manager => ({
                     value: manager.employee_id,
                     label: `${manager.name} (${manager.title || 'No Title'})`,
@@ -303,11 +332,17 @@ const filterOptions = useMemo(() => {
             : []
     };
 
-  
+    console.log('✅ Filter options built:', {
+        businessFunctions: options.businessFunctions.length,
+        departments: options.departments.length,
+        units: options.units.length,
+        positionGroups: options.positionGroups.length
+    });
 
     return options;
 }, [
     orgChart,
+    fullTree, // ✅ Add fullTree as dependency
     businessFunctionsDropdown,
     departmentsDropdown,
     unitsDropdown,
@@ -367,7 +402,7 @@ const filterOptions = useMemo(() => {
   
   useEffect(() => {
     if (Array.isArray(fullTree) && fullTree.length === 0 && !loading.fullTree && !errors.fullTree) {
-        console.log('🚀 Auto-loading FULL tree with vacancies...');
+      
         actions.fetchFullTree();
     }
 }, [fullTree, loading.fullTree, errors.fullTree, actions]);
@@ -454,8 +489,8 @@ const filterOptions = useMemo(() => {
     filteredOrgChart,
     reactFlowData,
     summary,
-    orgChart: fullTree.length > 0 ? fullTree : orgChart, // ← Prefer fullTree
-    fullTree,
+    orgChart: fullTree.length > 0 ? fullTree : orgChart,
+  
     // Filters
     filters,
     activeFilters,

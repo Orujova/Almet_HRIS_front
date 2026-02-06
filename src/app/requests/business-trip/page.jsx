@@ -1595,7 +1595,7 @@ const handleOpenRequestDetail = (request) => {
                       <select
                         value={historyFilters.action}
                         onChange={(e) => setHistoryFilters(prev => ({ ...prev, action: e.target.value }))}
-                        className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+                        className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:outline-none focus:ring-1 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
                       >
                         <option value="">All Actions</option>
                         <option value="Approved">Approved</option>
@@ -1610,7 +1610,7 @@ const handleOpenRequestDetail = (request) => {
                         value={historyFilters.employee}
                         onChange={(e) => setHistoryFilters(prev => ({ ...prev, employee: e.target.value }))}
                         placeholder="Search employee"
-                        className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+                        className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:outline-none focus:ring-1 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
                       />
                     </div>
 
@@ -1620,7 +1620,7 @@ const handleOpenRequestDetail = (request) => {
                         type="date"
                         value={historyFilters.dateFrom}
                         onChange={(e) => setHistoryFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
-                        className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+                        className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:outline-none focus:ring-1 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
                       />
                     </div>
 
@@ -1630,7 +1630,7 @@ const handleOpenRequestDetail = (request) => {
                         type="date"
                         value={historyFilters.dateTo}
                         onChange={(e) => setHistoryFilters(prev => ({ ...prev, dateTo: e.target.value }))}
-                        className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+                        className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:outline-none focus:ring-1 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
                       />
                     </div>
                   </div>
@@ -1765,7 +1765,7 @@ const handleOpenRequestDetail = (request) => {
               <select
                 value={filters.status}
                 onChange={(e) => setFilters(prev => ({ ...prev, status: e.target.value }))}
-                className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:outline-none focus:ring-1 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
               >
                 <option value="">All Status</option>
                 <option value="SUBMITTED">Submitted</option>
@@ -1787,7 +1787,7 @@ const handleOpenRequestDetail = (request) => {
                 value={filters.employee}
                 onChange={(e) => setFilters(prev => ({ ...prev, employee: e.target.value }))}
                 placeholder="Search employee"
-                className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:outline-none focus:ring-1 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
               />
             </div>
 
@@ -1798,7 +1798,7 @@ const handleOpenRequestDetail = (request) => {
                 value={filters.department}
                 onChange={(e) => setFilters(prev => ({ ...prev, department: e.target.value }))}
                 placeholder="Search department"
-                className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:outline-none focus:ring-1 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
               />
             </div>
 
@@ -1808,7 +1808,7 @@ const handleOpenRequestDetail = (request) => {
                 type="date"
                 value={filters.dateFrom}
                 onChange={(e) => setFilters(prev => ({ ...prev, dateFrom: e.target.value }))}
-                className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:outline-none focus:ring-1 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
               />
             </div>
 
@@ -1818,7 +1818,7 @@ const handleOpenRequestDetail = (request) => {
                 type="date"
                 value={filters.dateTo}
                 onChange={(e) => setFilters(prev => ({ ...prev, dateTo: e.target.value }))}
-                className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:ring-2 focus:ring-almet-sapphire/20 dark:bg-gray-700 dark:text-white"
+                className="w-full px-3 py-2 text-xs border outline-0 border-almet-mystic dark:border-almet-comet rounded-lg focus:outline-none focus:ring-1 focus:ring-almet-sapphire dark:bg-gray-700 dark:text-white"
               />
             </div>
           </div>
